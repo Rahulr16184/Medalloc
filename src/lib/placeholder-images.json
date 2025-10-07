@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-image",
+      "description": "A modern hospital building exterior",
+      "imageUrl": "https://images.unsplash.com/photo-1596541223130-5d31a73fb6c6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxob3NwaXRhbCUyMGJ1aWxkaW5nfGVufDB8fHx8MTc1OTczMDgwM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "hospital building"
+    },
+    {
+      "id": "feature-realtime",
+      "description": "A nurse looking at a tablet with data charts",
+      "imageUrl": "https://picsum.photos/seed/realtime/500/300",
+      "imageHint": "nurse tablet"
+    },
+    {
+      "id": "feature-forecast",
+      "description": "Abstract visualization of data and charts",
+      "imageUrl": "https://picsum.photos/seed/forecast/500/300",
+      "imageHint": "data charts"
+    },
+    {
+      "id": "feature-dashboard",
+      "description": "A clean and modern dashboard interface",
+      "imageUrl": "https://images.unsplash.com/photo-1575388902449-6bca946ad549?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxkYXNoYm9hcmQlMjBpbnRlcmZhY2V8ZW58MHx8fHwxNzU5NzUzOTI4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "dashboard interface"
+    }
+  ]
 }

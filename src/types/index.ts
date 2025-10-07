@@ -1,0 +1,18 @@
+export type UserRole = 'admin' | 'hospital' | 'patient';
+
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  name: string | null;
+  role: UserRole;
+}
+
+export interface Hospital {
+  uid: string;
+  name: string;
+  adminName: string;
+  adminEmail: string;
+  status: 'pending' | 'approved' | 'rejected';
+  totalBeds: number;
+  occupiedBeds: number;
+}
