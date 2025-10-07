@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
@@ -34,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
+      if (user && user.emailVerified) {
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
@@ -45,10 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // User exists in Auth but not in Firestore, likely an error state
           setUserProfile(null);
           setUser(null);
+          await firebaseSignOut(auth);
         }
       } else {
         setUser(null);
         setUserProfile(null);
+        if (user && !user.emailVerified) {
+            // If user exists but email is not verified, ensure they are logged out
+            // client-side so they don't get stuck.
+            await firebaseSignOut(auth);
+        }
       }
       setLoading(false);
     });

@@ -48,14 +48,27 @@ export function LoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      // The AuthContext will handle the redirection, no toast needed here
-      // as it can feel jarring on successful login.
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      
+      if (!userCredential.user.emailVerified) {
+        toast({
+          variant: "destructive",
+          title: "Email Not Verified",
+          description: "Please check your inbox and verify your email address before logging in.",
+        });
+        await auth.signOut();
+      }
+      // If email is verified, AuthContext will handle redirection.
+      
     } catch (error: any) {
+      let description = "An unexpected error occurred. Please try again.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        description = "Invalid email or password. Please try again.";
+      }
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: "Invalid email or password. Please try again.",
+        description: description,
       });
     } finally {
       setLoading(false);

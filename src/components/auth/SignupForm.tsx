@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/firebase";
 import { Button } from "@/components/ui/button";
@@ -88,6 +88,8 @@ export function SignupForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
+      await sendEmailVerification(user);
+
       // Create user profile in Firestore
       const userProfile = {
         uid: user.uid,
@@ -117,10 +119,13 @@ export function SignupForm() {
       }
       
       toast({
-        title: "Account Created",
-        description: "Redirecting you to your dashboard...",
+        title: "Verification Email Sent",
+        description: "Your account has been created. Please check your email to verify your account before logging in.",
       });
-      // AuthContext will handle redirection
+      // AuthContext will handle redirection, but user needs to verify first.
+      // Maybe redirect to a "please verify" page or just to login.
+      // For now, it will redirect to login page.
+      
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -299,5 +304,3 @@ export function SignupForm() {
     </Card>
   );
 }
-
-    
