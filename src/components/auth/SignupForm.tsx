@@ -33,57 +33,34 @@ const formSchema = z.object({
   state: z.string().optional(),
   postalCode: z.string().optional(),
   district: z.string().optional(),
-}).refine(data => data.password === data.confirmPassword, {
-    message: "Passwords don't match.",
-    path: ["confirmPassword"],
-}).refine(data => {
-  if (data.role === 'hospital') {
-    return !!data.hospitalName && data.hospitalName.length > 0;
-  }
-  return true;
-}, {
-  message: "Hospital name is required.",
-  path: ["hospitalName"],
-}).refine(data => {
-    if (data.role === 'hospital') {
-        return !!data.address && data.address.length > 0;
+}).superRefine((data, ctx) => {
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Passwords don't match.",
+        path: ["confirmPassword"],
+      });
     }
-    return true;
-}, {
-    message: "Address is required.",
-    path: ["address"],
-}).refine(data => {
     if (data.role === 'hospital') {
-        return !!data.city && data.city.length > 0;
+        if (!data.hospitalName) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Hospital name is required.", path: ["hospitalName"] });
+        }
+        if (!data.address) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Address is required.", path: ["address"] });
+        }
+        if (!data.city) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "City is required.", path: ["city"] });
+        }
+        if (!data.postalCode) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Postal code is required.", path: ["postalCode"] });
+        }
+        if (!data.state) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "State is required.", path: ["state"] });
+        }
+        if (!data.district) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "District is required.", path: ["district"] });
+        }
     }
-    return true;
-}, {
-    message: "City is required.",
-    path: ["city"],
-}).refine(data => {
-    if (data.role === 'hospital') {
-        return !!data.state && data.state.length > 0;
-    }
-    return true;
-}, {
-    message: "State is required.",
-    path: ["state"],
-}).refine(data => {
-    if (data.role === 'hospital') {
-        return !!data.postalCode && data.postalCode.length > 0;
-    }
-    return true;
-}, {
-    message: "Postal code is required.",
-    path: ["postalCode"],
-}).refine(data => {
-    if (data.role === 'hospital') {
-        return !!data.district && data.district.length > 0;
-    }
-    return true;
-}, {
-    message: "District is required.",
-    path: ["district"],
 });
 
 
@@ -216,7 +193,8 @@ export function SignupForm() {
                 />
 
                 {role === 'hospital' && (
-                  <div className="space-y-4 transition-all duration-300">
+                  <div className="space-y-4 pt-4 border-t transition-all duration-300">
+                    <h3 className="text-lg font-medium">Hospital Details</h3>
                     <FormField control={form.control} name="hospitalName" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Hospital Name</FormLabel>
@@ -287,7 +265,7 @@ export function SignupForm() {
                                   <FormControl>
                                   <SelectTrigger>
                                       <SelectValue placeholder="Select a district" />
-                                  </Trigger>
+                                  </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
                                   {districts.map(d => (
@@ -321,3 +299,5 @@ export function SignupForm() {
     </Card>
   );
 }
+
+    
