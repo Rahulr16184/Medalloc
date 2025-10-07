@@ -21,7 +21,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  role: z.enum(["patient", "hospital"], { required_error: "You must select a role." }),
+  role: z.enum(["patient", "hospital", "server"], { required_error: "You must select a role." }),
   hospitalName: z.string().optional(),
 }).refine(data => {
   if (data.role === 'hospital') {
@@ -133,6 +133,10 @@ export function SignupForm() {
                       <FormItem className="flex items-center space-x-3 space-y-0">
                         <FormControl><RadioGroupItem value="hospital" /></FormControl>
                         <FormLabel className="font-normal">Hospital Representative</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl><RadioGroupItem value="server" /></FormControl>
+                        <FormLabel className="font-normal">Server</FormLabel>
                       </FormItem>
                     </RadioGroup>
                   </FormControl>

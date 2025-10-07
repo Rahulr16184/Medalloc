@@ -22,6 +22,7 @@ const roleBasedRedirects: Record<UserRole, string> = {
   admin: '/admin',
   hospital: '/hospital',
   patient: '/patient',
+  server: '/server',
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
