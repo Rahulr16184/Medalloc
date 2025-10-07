@@ -201,91 +201,95 @@ export function SignupForm() {
                     </FormItem>
                   )}
                 />
-                <div className={cn("space-y-4 transition-all duration-300", role === 'hospital' ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden')}>
-                  <FormField control={form.control} name="hospitalName" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hospital Name</FormLabel>
-                        <FormControl><Input placeholder="General Hospital" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField control={form.control} name="address" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Address</FormLabel>
-                        <FormControl><Input placeholder="123 Main St" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                   <div className="grid grid-cols-2 gap-4">
-                     <FormField control={form.control} name="city" render={({ field }) => (
+
+                {role === 'hospital' && (
+                  <div className="space-y-4 transition-all duration-300">
+                    <FormField control={form.control} name="hospitalName" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>City</FormLabel>
-                          <FormControl><Input placeholder="Anytown" {...field} /></FormControl>
+                          <FormLabel>Hospital Name</FormLabel>
+                          <FormControl><Input placeholder="General Hospital" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <FormField control={form.control} name="postalCode" render={({ field }) => (
+                    <FormField control={form.control} name="address" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Postal Code</FormLabel>
-                          <FormControl><Input placeholder="12345" {...field} /></FormControl>
+                          <FormLabel>Address</FormLabel>
+                          <FormControl><Input placeholder="123 Main St" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </div>
-                   <div className="grid grid-cols-2 gap-4">
-                     <FormField
-                        control={form.control}
-                        name="state"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>State</FormLabel>
-                            <Select onValueChange={(value) => {
-                                field.onChange(value);
-                                form.resetField('district');
-                            }} defaultValue={field.value}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a state" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                {indianStates.states.map(s => (
-                                    <SelectItem key={s.state} value={s.state}>{s.state}</SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
+                     <div className="grid grid-cols-2 gap-4">
+                       <FormField control={form.control} name="city" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City</FormLabel>
+                            <FormControl><Input placeholder="Anytown" {...field} /></FormControl>
                             <FormMessage />
-                            </FormItem>
+                          </FormItem>
                         )}
-                        />
-                    <FormField
-                        control={form.control}
-                        name="district"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>District</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedState}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a district" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                {districts.map(d => (
-                                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
+                      />
+                      <FormField control={form.control} name="postalCode" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Postal Code</FormLabel>
+                            <FormControl><Input placeholder="12345" {...field} /></FormControl>
                             <FormMessage />
-                            </FormItem>
+                          </FormItem>
                         )}
-                        />
+                      />
+                    </div>
+                     <div className="grid grid-cols-2 gap-4">
+                       <FormField
+                          control={form.control}
+                          name="state"
+                          render={({ field }) => (
+                              <FormItem>
+                              <FormLabel>State</FormLabel>
+                              <Select onValueChange={(value) => {
+                                  field.onChange(value);
+                                  form.resetField('district');
+                              }} defaultValue={field.value}>
+                                  <FormControl>
+                                  <SelectTrigger>
+                                      <SelectValue placeholder="Select a state" />
+                                  </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                  {indianStates.states.map(s => (
+                                      <SelectItem key={s.state} value={s.state}>{s.state}</SelectItem>
+                                  ))}
+                                  </SelectContent>
+                              </Select>
+                              <FormMessage />
+                              </FormItem>
+                          )}
+                          />
+                      <FormField
+                          control={form.control}
+                          name="district"
+                          render={({ field }) => (
+                              <FormItem>
+                              <FormLabel>District</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value} disabled={!selectedState}>
+                                  <FormControl>
+                                  <SelectTrigger>
+                                      <SelectValue placeholder="Select a district" />
+                                  </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                  {districts.map(d => (
+                                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                                  ))}
+                                  </SelectContent>
+                              </Select>
+                              <FormMessage />
+                              </FormItem>
+                          )}
+                          />
+                    </div>
                   </div>
-                </div>
+                )}
+                
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Create Account
