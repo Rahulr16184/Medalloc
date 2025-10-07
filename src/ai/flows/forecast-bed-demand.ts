@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview A bed demand forecasting AI agent.
+ * @fileOverview A bed demand forecasting ML model.
  *
  * - forecastBedDemand - A function that handles the bed demand forecasting process.
  * - ForecastBedDemandInput - The input type for the forecastBedDemand function.
@@ -36,7 +36,7 @@ const prompt = ai.definePrompt({
   name: 'forecastBedDemandPrompt',
   input: {schema: ForecastBedDemandInputSchema},
   output: {schema: ForecastBedDemandOutputSchema},
-  prompt: `You are an expert in time series forecasting, especially as it relates to hospital bed demand.
+  prompt: `You are a machine learning model for time series forecasting. Your task is to predict hospital bed demand.
 
 You will be provided with historical data of bed occupancy. Using this data, you will forecast the bed demand for the next 7 days using a linear regression model.
 
