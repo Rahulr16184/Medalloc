@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Hospital as HospitalIcon, User } from "lucide-react";
 import type { UserRole } from "@/types";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import indianStates from "@/lib/india-states-districts.json";
@@ -25,6 +25,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  confirmPassword: z.string(),
   role: z.enum(["patient", "hospital"]),
   hospitalName: z.string().optional(),
   address: z.string().optional(),
@@ -32,6 +33,9 @@ const formSchema = z.object({
   state: z.string().optional(),
   postalCode: z.string().optional(),
   district: z.string().optional(),
+}).refine(data => data.password === data.confirmPassword, {
+    message: "Passwords don't match.",
+    path: ["confirmPassword"],
 }).refine(data => {
   if (data.role === 'hospital') {
     return !!data.hospitalName && data.hospitalName.length > 0;
@@ -89,7 +93,7 @@ export function SignupForm() {
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "", email: "", password: "", role: "patient" },
+    defaultValues: { name: "", email: "", password: "", confirmPassword: "", role: "patient" },
   });
 
   const role = form.watch("role");
@@ -196,7 +200,16 @@ export function SignupForm() {
                 <FormField control={form.control} name="password" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Password</FormLabel>
-                      <FormControl><Input type="password" placeholder="••••••••" /></FormControl>
+                      <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -274,7 +287,7 @@ export function SignupForm() {
                                   <FormControl>
                                   <SelectTrigger>
                                       <SelectValue placeholder="Select a district" />
-                                  </SelectTrigger>
+                                  </Trigger>
                                   </FormControl>
                                   <SelectContent>
                                   {districts.map(d => (
