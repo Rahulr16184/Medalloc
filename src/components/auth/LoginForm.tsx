@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -48,16 +49,13 @@ export function LoginForm() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      toast({
-        title: "Login Successful",
-        description: "Redirecting you to your dashboard...",
-      });
-      // The AuthContext will handle the redirection
+      // The AuthContext will handle the redirection, no toast needed here
+      // as it can feel jarring on successful login.
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: error.message || "An unexpected error occurred.",
+        description: "Invalid email or password. Please try again.",
       });
     } finally {
       setLoading(false);

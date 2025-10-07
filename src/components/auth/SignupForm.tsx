@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -12,16 +13,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Hospital, User } from "lucide-react";
 import type { UserRole } from "@/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  role: z.enum(["patient", "hospital", "server"], { required_error: "You must select a role." }),
+  role: z.enum(["patient", "hospital"]),
   hospitalName: z.string().optional(),
 }).refine(data => {
   if (data.role === 'hospital') {
@@ -36,9 +38,10 @@ const formSchema = z.object({
 export function SignupForm() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "", email: "", password: "" },
+    defaultValues: { name: "", email: "", password: "", role: "patient" },
   });
 
   const role = form.watch("role");
@@ -96,69 +99,63 @@ export function SignupForm() {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl><Input placeholder="name@example.com" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField control={form.control} name="password" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField control={form.control} name="role" render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>I am a...</FormLabel>
-                  <FormControl>
-                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl><RadioGroupItem value="patient" /></FormControl>
-                        <FormLabel className="font-normal">Patient</FormLabel>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <Tabs
+                    value={role}
+                    onValueChange={(value) => form.setValue('role', value as 'patient' | 'hospital')}
+                    className="w-full"
+                >
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="patient">
+                            <User className="mr-2 h-4 w-4" />
+                            Patient
+                        </TabsTrigger>
+                        <TabsTrigger value="hospital">
+                            <Hospital className="mr-2 h-4 w-4" />
+                            Hospital
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+
+                <FormField control={form.control} name="name" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField control={form.control} name="email" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl><Input placeholder="name@example.com" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField control={form.control} name="password" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className={cn("space-y-4 transition-all duration-300", role === 'hospital' ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden')}>
+                  <FormField control={form.control} name="hospitalName" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hospital Name</FormLabel>
+                        <FormControl><Input placeholder="General Hospital" {...field} /></FormControl>
+                        <FormMessage />
                       </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl><RadioGroupItem value="hospital" /></FormControl>
-                        <FormLabel className="font-normal">Hospital Representative</FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl><RadioGroupItem value="server" /></FormControl>
-                        <FormLabel className="font-normal">Server</FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {role === 'hospital' && (
-              <FormField control={form.control} name="hospitalName" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Hospital Name</FormLabel>
-                    <FormControl><Input placeholder="General Hospital" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Account
-            </Button>
-          </form>
+                    )}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Create Account
+                </Button>
+            </form>
         </Form>
       </CardContent>
       <CardFooter className="flex justify-center text-sm">
