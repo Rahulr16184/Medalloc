@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +18,8 @@ import { Loader2, Hospital as HospitalIcon, User } from "lucide-react";
 import type { UserRole } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import indianStates from "@/lib/india-states-districts.json";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -91,6 +93,13 @@ export function SignupForm() {
   });
 
   const role = form.watch("role");
+  const selectedState = form.watch("state");
+
+  const districts = useMemo(() => {
+    if (!selectedState) return [];
+    const stateData = indianStates.states.find(s => s.state === selectedState);
+    return stateData ? stateData.districts : [];
+  }, [selectedState]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
@@ -218,16 +227,6 @@ export function SignupForm() {
                         </FormItem>
                       )}
                     />
-                    <FormField control={form.control} name="state" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>State</FormLabel>
-                          <FormControl><Input placeholder="CA" {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="postalCode" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Postal Code</FormLabel>
@@ -236,14 +235,55 @@ export function SignupForm() {
                         </FormItem>
                       )}
                     />
-                    <FormField control={form.control} name="district" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>District</FormLabel>
-                          <FormControl><Input placeholder="County Name" {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  </div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <FormField
+                        control={form.control}
+                        name="state"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>State</FormLabel>
+                            <Select onValueChange={(value) => {
+                                field.onChange(value);
+                                form.resetField('district');
+                            }} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a state" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                {indianStates.states.map(s => (
+                                    <SelectItem key={s.state} value={s.state}>{s.state}</SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    <FormField
+                        control={form.control}
+                        name="district"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>District</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedState}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a district" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                {districts.map(d => (
+                                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
