@@ -1,3 +1,4 @@
+
 export type UserRole = 'admin' | 'hospital' | 'patient' | 'server';
 
 export interface UserProfile {
@@ -15,4 +16,9 @@ export interface Hospital {
   status: 'pending' | 'approved' | 'rejected';
   totalBeds: number;
   occupiedBeds: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  district?: string;
 }

@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Hospital, User } from "lucide-react";
+import { Loader2, Hospital as HospitalIcon, User } from "lucide-react";
 import type { UserRole } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,11 @@ const formSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
   role: z.enum(["patient", "hospital"]),
   hospitalName: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  postalCode: z.string().optional(),
+  district: z.string().optional(),
 }).refine(data => {
   if (data.role === 'hospital') {
     return !!data.hospitalName && data.hospitalName.length > 0;
@@ -33,7 +38,48 @@ const formSchema = z.object({
 }, {
   message: "Hospital name is required.",
   path: ["hospitalName"],
+}).refine(data => {
+    if (data.role === 'hospital') {
+        return !!data.address && data.address.length > 0;
+    }
+    return true;
+}, {
+    message: "Address is required.",
+    path: ["address"],
+}).refine(data => {
+    if (data.role === 'hospital') {
+        return !!data.city && data.city.length > 0;
+    }
+    return true;
+}, {
+    message: "City is required.",
+    path: ["city"],
+}).refine(data => {
+    if (data.role === 'hospital') {
+        return !!data.state && data.state.length > 0;
+    }
+    return true;
+}, {
+    message: "State is required.",
+    path: ["state"],
+}).refine(data => {
+    if (data.role === 'hospital') {
+        return !!data.postalCode && data.postalCode.length > 0;
+    }
+    return true;
+}, {
+    message: "Postal code is required.",
+    path: ["postalCode"],
+}).refine(data => {
+    if (data.role === 'hospital') {
+        return !!data.district && data.district.length > 0;
+    }
+    return true;
+}, {
+    message: "District is required.",
+    path: ["district"],
 });
+
 
 export function SignupForm() {
   const [loading, setLoading] = useState(false);
@@ -71,6 +117,11 @@ export function SignupForm() {
           status: 'pending',
           totalBeds: 0,
           occupiedBeds: 0,
+          address: values.address,
+          city: values.city,
+          state: values.state,
+          postalCode: values.postalCode,
+          district: values.district,
         };
         await setDoc(doc(db, "hospitals", user.uid), hospitalData);
       }
@@ -111,7 +162,7 @@ export function SignupForm() {
                             Patient
                         </TabsTrigger>
                         <TabsTrigger value="hospital">
-                            <Hospital className="mr-2 h-4 w-4" />
+                            <HospitalIcon className="mr-2 h-4 w-4" />
                             Hospital
                         </TabsTrigger>
                     </TabsList>
@@ -150,6 +201,50 @@ export function SignupForm() {
                       </FormItem>
                     )}
                   />
+                  <FormField control={form.control} name="address" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Address</FormLabel>
+                        <FormControl><Input placeholder="123 Main St" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <div className="grid grid-cols-2 gap-4">
+                     <FormField control={form.control} name="city" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City</FormLabel>
+                          <FormControl><Input placeholder="Anytown" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField control={form.control} name="state" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>State</FormLabel>
+                          <FormControl><Input placeholder="CA" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                   <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="postalCode" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Postal Code</FormLabel>
+                          <FormControl><Input placeholder="12345" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField control={form.control} name="district" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>District</FormLabel>
+                          <FormControl><Input placeholder="County Name" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
