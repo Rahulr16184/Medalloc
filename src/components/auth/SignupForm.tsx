@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Hospital as HospitalIcon, User, Server } from "lucide-react";
+import { Loader2, Hospital as HospitalIcon, User } from "lucide-react";
 import type { UserRole } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  role: z.enum(["patient", "hospital", "server"]),
+  role: z.enum(["patient", "hospital"]),
   hospitalName: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
@@ -162,10 +162,10 @@ export function SignupForm() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <Tabs
                     value={role}
-                    onValueChange={(value) => form.setValue('role', value as 'patient' | 'hospital' | 'server')}
+                    onValueChange={(value) => form.setValue('role', value as 'patient' | 'hospital')}
                     className="w-full"
                 >
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="patient">
                             <User className="mr-2 h-4 w-4" />
                             Patient
@@ -173,10 +173,6 @@ export function SignupForm() {
                         <TabsTrigger value="hospital">
                             <HospitalIcon className="mr-2 h-4 w-4" />
                             Hospital
-                        </TabsTrigger>
-                        <TabsTrigger value="server">
-                            <Server className="mr-2 h-4 w-4" />
-                            Server
                         </TabsTrigger>
                     </TabsList>
                 </Tabs>
