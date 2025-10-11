@@ -70,7 +70,19 @@ export function SignupForm() {
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "", email: "", password: "", confirmPassword: "", role: "patient" },
+    defaultValues: { 
+      name: "", 
+      email: "", 
+      password: "", 
+      confirmPassword: "", 
+      role: "patient",
+      hospitalName: "",
+      address: "",
+      city: "",
+      postalCode: "",
+      state: "",
+      district: ""
+    },
   });
 
   const role = form.watch("role");
@@ -197,8 +209,7 @@ export function SignupForm() {
                   )}
                 />
 
-                {role === 'hospital' && (
-                  <div className="space-y-4 pt-4 border-t transition-all duration-300">
+                <div className={cn("space-y-4 pt-4 border-t transition-all duration-300", role === 'hospital' ? 'block' : 'hidden' )}>
                     <h3 className="text-lg font-medium">Hospital Details</h3>
                     <FormField control={form.control} name="hospitalName" render={({ field }) => (
                         <FormItem>
@@ -283,8 +294,7 @@ export function SignupForm() {
                           )}
                           />
                     </div>
-                  </div>
-                )}
+                </div>
                 
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
