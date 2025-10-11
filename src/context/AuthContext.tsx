@@ -20,7 +20,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const publicRoutes = ['/', '/login', '/signup'];
 const roleBasedRedirects: Record<UserRole, string> = {
-  admin: '/admin',
   hospital: '/hospital',
   patient: '/patient',
   server: '/server',
