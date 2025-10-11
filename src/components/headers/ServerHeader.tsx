@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link"
@@ -22,8 +23,8 @@ export function ServerHeader() {
                             key={item.href}
                             href={item.href}
                             className={cn(
-                                "flex items-center gap-2 rounded-lg px-3 py-2 transition-all hover:text-primary",
-                                pathname === item.href ? "text-primary bg-accent" : "text-muted-foreground"
+                                "flex items-center gap-2 rounded-lg px-3 py-2 transition-all hover:bg-muted hover:text-foreground",
+                                pathname === item.href ? "bg-accent text-accent-foreground" : "text-foreground"
                             )}
                         >
                             {item.icon}
