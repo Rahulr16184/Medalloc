@@ -1,10 +1,14 @@
-import { DashboardPage } from "@/components/dashboard/DashboardPage";
-import { LayoutDashboard, Server as ServerIcon } from 'lucide-react';
-
-const navItems = [
-    { href: "/server", label: "Dashboard", icon: <LayoutDashboard /> },
-];
+import { ServerHeader } from '@/components/headers/ServerHeader';
+import { MainHeader } from '@/components/headers/MainHeader';
 
 export default function ServerLayout({ children }: { children: React.ReactNode }) {
-    return <DashboardPage navItems={navItems}>{children}</DashboardPage>;
+    return (
+        <div className="flex min-h-screen w-full flex-col">
+            <MainHeader />
+            <ServerHeader />
+            <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+                {children}
+            </main>
+        </div>
+    );
 }

@@ -1,12 +1,14 @@
-import { DashboardPage } from "@/components/dashboard/DashboardPage";
-import { LayoutDashboard, BarChart3, BedDouble } from 'lucide-react';
-
-const navItems = [
-    { href: "/hospital", label: "My Hospital", icon: <LayoutDashboard /> },
-    { href: "/hospital/beds", label: "Bed Management", icon: <BedDouble /> },
-    { href: "/hospital/forecasting", label: "Demand Forecasting", icon: <BarChart3 /> },
-];
+import { HospitalHeader } from '@/components/headers/HospitalHeader';
+import { MainHeader } from '@/components/headers/MainHeader';
 
 export default function HospitalLayout({ children }: { children: React.ReactNode }) {
-    return <DashboardPage navItems={navItems}>{children}</DashboardPage>;
+    return (
+        <div className="flex min-h-screen w-full flex-col">
+            <MainHeader />
+            <HospitalHeader />
+            <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+                {children}
+            </main>
+        </div>
+    );
 }
