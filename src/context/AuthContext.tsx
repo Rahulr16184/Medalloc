@@ -4,10 +4,11 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { onAuthStateChanged, User, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/firebase';
 import type { UserProfile, UserRole } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MainHeader } from '@/components/headers/MainHeader';
 
 interface AuthContextType {
   user: User | null;
@@ -33,46 +34,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && user.emailVerified) {
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          const profile = userDoc.data() as UserProfile;
-          setUser(user);
-          setUserProfile(profile);
-        } else {
-          // User exists in Auth but not in Firestore, likely an error state
-          setUserProfile(null);
-          setUser(null);
-          await firebaseSignOut(auth);
-        }
-      } else {
-        setUser(null);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      if (!user) {
         setUserProfile(null);
-        if (user && !user.emailVerified) {
-            // If user exists but email is not verified, ensure they are logged out
-            // client-side so they don't get stuck.
-            await firebaseSignOut(auth);
-        }
+        setLoading(false);
       }
-      setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
+    if (user) {
+      if (!user.emailVerified) {
+          firebaseSignOut(auth);
+          setUserProfile(null);
+          setLoading(false);
+          return;
+      }
+      const unsub = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+        if (doc.exists()) {
+          setUserProfile(doc.data() as UserProfile);
+        } else {
+          setUserProfile(null);
+        }
+        setLoading(false);
+      }, () => {
+        // Handle error, e.g. client offline
+        setLoading(false);
+        setUserProfile(null);
+      });
+      return () => unsub();
+    } else {
+        setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (loading) return;
 
-    const isPublic = publicRoutes.includes(pathname);
+    const isPublic = publicRoutes.some(route => pathname === route);
 
     if (userProfile) {
       const expectedRoute = roleBasedRedirects[userProfile.role];
       if (isPublic) {
         router.push(expectedRoute);
       } else if (!pathname.startsWith(expectedRoute)) {
-        // Logged in user trying to access another role's dashboard
         router.push(expectedRoute);
       }
     } else if (!isPublic) {
@@ -84,46 +91,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
     router.push('/login');
   };
-  
-  // While initial auth check is running, show a full-page loader.
+
+  const isPublicRoute = publicRoutes.some(route => pathname === route);
+
+  const value = { user, userProfile, loading, logout };
+
   if (loading) {
      return (
-        <div className="flex h-screen w-screen items-center justify-center">
+      <AuthContext.Provider value={value}>
+        <div className="flex h-screen w-screen flex-col">
+          <MainHeader />
+          <div className="flex flex-1 items-center justify-center">
             <div className="w-full max-w-md space-y-4 p-4">
-                <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-96 w-full" />
             </div>
+          </div>
         </div>
-     );
-  }
-
-  // If user is not logged in and on a public route, show the page.
-  if (!userProfile && publicRoutes.includes(pathname)) {
-    return (
-        <AuthContext.Provider value={{ user, userProfile, loading, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
-  }
-  
-  // If user is logged in, and we are on the correct route, show the page
-  if(userProfile && pathname.startsWith(roleBasedRedirects[userProfile.role])) {
-    return (
-      <AuthContext.Provider value={{ user, userProfile, loading, logout }}>
-        {children}
       </AuthContext.Provider>
     );
   }
 
-
-  // In all other cases (e.g. redirecting), show a loader to prevent flicker.
   return (
-    <div className="flex h-screen w-screen items-center justify-center">
-        <div className="w-full max-w-md space-y-4 p-4">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-96 w-full" />
-        </div>
-    </div>
+    <AuthContext.Provider value={value}>
+      {isPublicRoute ? children : (
+        <>
+          {children}
+        </>
+      )}
+    </AuthContext.Provider>
   );
 }
 
