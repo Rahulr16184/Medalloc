@@ -8,7 +8,6 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/firebase';
 import type { UserProfile, UserRole } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MainHeader } from '@/components/headers/MainHeader';
 
 interface AuthContextType {
   user: User | null;
@@ -39,63 +38,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
-        // If no user, stop loading and clear profile
         setLoading(false);
         setUserProfile(null);
       }
     });
-
     return () => unsubscribeAuth();
   }, []);
 
   useEffect(() => {
-    if (user) {
-      if (!user.emailVerified) {
-          // If email is not verified, sign out, stop loading.
-          firebaseSignOut(auth);
-          setLoading(false);
-          setUserProfile(null);
-          return;
-      }
-      // If we have a user, listen to their profile document
-      const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
+    if (!user.emailVerified) {
+        firebaseSignOut(auth);
+        setLoading(false);
+        setUserProfile(null);
+        return;
+    }
+
+    const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), 
+      (doc) => {
         if (doc.exists()) {
           setUserProfile(doc.data() as UserProfile);
         } else {
           setUserProfile(null);
         }
-        setLoading(false); // Stop loading once profile is fetched (or not found)
-      }, () => {
-        // On error, stop loading
         setLoading(false);
+      }, 
+      () => {
         setUserProfile(null);
-      });
-      return () => unsubscribeProfile();
-    } else {
-      // If there's no user, we're not loading.
-      setLoading(false);
-    }
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribeProfile();
   }, [user]);
 
   useEffect(() => {
-    if (loading) {
-      return; // Don't do anything while loading
-    }
-    
-    const isPublicPage = publicRoutes.some(route => pathname.startsWith(route) && (pathname.length === route.length || route === '/'));
+    if (loading) return;
+
+    const isPublicPage = publicRoutes.includes(pathname) || pathname === '/';
     const isAuthPage = authRoutes.includes(pathname);
 
-    if (userProfile) { // User is logged in and has a profile
+    if (userProfile) { // User is logged in
       const expectedRoute = roleBasedRedirects[userProfile.role];
       if (isAuthPage || pathname === '/') {
         router.push(expectedRoute);
+      } else if (!pathname.startsWith(expectedRoute)) {
+        // Optional: If user is logged in but on a wrong dashboard, redirect them
+        // For now, we only redirect from public/auth pages
       }
     } else { // User is not logged in
       if (!isPublicPage) {
         router.push('/login');
       }
     }
-
   }, [userProfile, loading, pathname, router]);
 
   const logout = async () => {
@@ -103,28 +102,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  const isAppPage = !publicRoutes.includes(pathname);
-  
   if (loading) {
-      return (
-        <div className="flex h-screen w-screen flex-col">
-           <header className="sticky top-0 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
-             <div className="flex items-center gap-2">
-                 <Skeleton className="h-6 w-6" />
-                 <Skeleton className="h-6 w-24" />
-             </div>
-              <Skeleton className="h-8 w-8 rounded-full" />
-           </header>
-           <main className="flex flex-1 items-center justify-center">
-             <Skeleton className="h-96 w-full max-w-md" />
-           </main>
-         </div>
-      );
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center">
+        <Skeleton className="h-96 w-full max-w-md" />
+      </div>
+    );
   }
 
   return (
     <AuthContext.Provider value={{ user, userProfile, loading, logout }}>
-      {isAppPage && <MainHeader />}
       {children}
     </AuthContext.Provider>
   );
