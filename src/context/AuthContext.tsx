@@ -8,6 +8,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/firebase';
 import type { UserProfile, UserRole } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MainHeader } from '@/components/headers/MainHeader';
 
 interface AuthContextType {
   user: User | null;
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialAuthCheck, setInitialAuthCheck] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -38,8 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
-        setLoading(false);
         setUserProfile(null);
+        setInitialAuthCheck(false);
+        setLoading(false);
       }
     });
     return () => unsubscribeAuth();
@@ -47,14 +50,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) {
-      setLoading(false);
       return;
     }
     
     if (!user.emailVerified) {
         firebaseSignOut(auth);
-        setLoading(false);
         setUserProfile(null);
+        setInitialAuthCheck(false);
+        setLoading(false);
         return;
     }
 
@@ -65,10 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setUserProfile(null);
         }
+        setInitialAuthCheck(false);
         setLoading(false);
       }, 
-      () => {
+      (error) => {
+        console.error("Error fetching user profile:", error);
         setUserProfile(null);
+        setInitialAuthCheck(false);
         setLoading(false);
       }
     );
@@ -77,37 +83,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    if (loading) return;
+    if (initialAuthCheck) {
+      return;
+    }
 
-    const isPublicPage = publicRoutes.includes(pathname) || pathname === '/';
+    const isPublicPage = publicRoutes.some(route => pathname === route || (route === '/' && pathname.startsWith('/#')));
     const isAuthPage = authRoutes.includes(pathname);
 
     if (userProfile) { // User is logged in
       const expectedRoute = roleBasedRedirects[userProfile.role];
       if (isAuthPage || pathname === '/') {
         router.push(expectedRoute);
-      } else if (!pathname.startsWith(expectedRoute)) {
-        // Optional: If user is logged in but on a wrong dashboard, redirect them
-        // For now, we only redirect from public/auth pages
       }
     } else { // User is not logged in
       if (!isPublicPage) {
         router.push('/login');
       }
     }
-  }, [userProfile, loading, pathname, router]);
+  }, [userProfile, initialAuthCheck, pathname, router]);
 
   const logout = async () => {
     await firebaseSignOut(auth);
+    setUserProfile(null);
     router.push('/login');
   };
 
-  if (loading) {
+  const isPublicPage = publicRoutes.some(route => pathname === route || (route === '/' && pathname.startsWith('/#')));
+
+  if (initialAuthCheck) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center">
-        <Skeleton className="h-96 w-full max-w-md" />
+        <Skeleton className="h-full w-full" />
       </div>
     );
+  }
+  
+  if (!userProfile && !isPublicPage) {
+    return (
+        <div className="flex h-screen w-screen flex-col items-center justify-center">
+          <Skeleton className="h-full w-full" />
+        </div>
+      );
   }
 
   return (
