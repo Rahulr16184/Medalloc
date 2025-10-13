@@ -1,3 +1,4 @@
+
 "use client";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,3 +92,4 @@ export default function HospitalDashboardPage() {
     </div>
   );
 }
+

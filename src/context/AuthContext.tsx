@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
+        // If no user, stop loading and clear profile
         setLoading(false);
         setUserProfile(null);
       }
@@ -48,86 +49,82 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    if (!user.emailVerified) {
+    if (user) {
+      if (!user.emailVerified) {
+          // If email is not verified, sign out, stop loading.
+          firebaseSignOut(auth);
+          setLoading(false);
+          setUserProfile(null);
+          return;
+      }
+      // If we have a user, listen to their profile document
+      const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+        if (doc.exists()) {
+          setUserProfile(doc.data() as UserProfile);
+        } else {
+          setUserProfile(null);
+        }
+        setLoading(false); // Stop loading once profile is fetched (or not found)
+      }, () => {
+        // On error, stop loading
         setLoading(false);
         setUserProfile(null);
-        firebaseSignOut(auth);
-        return;
+      });
+      return () => unsubscribeProfile();
+    } else {
+      // If there's no user, we're not loading.
+      setLoading(false);
     }
-
-    const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-      if (doc.exists()) {
-        setUserProfile(doc.data() as UserProfile);
-      } else {
-        setUserProfile(null);
-      }
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching user profile:", error);
-      setUserProfile(null);
-      setLoading(false);
-    });
-
-    return () => unsubscribeProfile();
   }, [user]);
 
   useEffect(() => {
     if (loading) {
-      return;
+      return; // Don't do anything while loading
     }
-
-    const isPublic = publicRoutes.some(route => pathname.startsWith(route) && (pathname.length === route.length || route === '/'));
+    
+    const isPublicPage = publicRoutes.some(route => pathname.startsWith(route) && (pathname.length === route.length || route === '/'));
     const isAuthPage = authRoutes.includes(pathname);
 
-    if (userProfile) { // User is logged in
+    if (userProfile) { // User is logged in and has a profile
       const expectedRoute = roleBasedRedirects[userProfile.role];
       if (isAuthPage || pathname === '/') {
         router.push(expectedRoute);
-      } else if (!pathname.startsWith(expectedRoute)) {
-        // Optional: If a logged-in user is on a wrong dashboard, redirect them.
-        // router.push(expectedRoute);
       }
     } else { // User is not logged in
-      if (!isPublic) {
+      if (!isPublicPage) {
         router.push('/login');
       }
     }
-  }, [loading, userProfile, pathname, router]);
+
+  }, [userProfile, loading, pathname, router]);
 
   const logout = async () => {
     await firebaseSignOut(auth);
-    // State updates will handle the redirect
+    router.push('/login');
   };
+
+  const isAppPage = !publicRoutes.includes(pathname);
   
   if (loading) {
       return (
         <div className="flex h-screen w-screen flex-col">
-          <header className="sticky top-0 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
-            <div className="flex items-center gap-2">
-                <Skeleton className="h-6 w-6" />
-                <Skeleton className="h-6 w-24" />
-            </div>
-             <Skeleton className="h-8 w-8 rounded-full" />
-          </header>
-          <div className="flex flex-1 items-center justify-center">
-            <div className="w-full max-w-md space-y-4 p-4">
-                <Skeleton className="h-96 w-full" />
-            </div>
-          </div>
-        </div>
+           <header className="sticky top-0 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
+             <div className="flex items-center gap-2">
+                 <Skeleton className="h-6 w-6" />
+                 <Skeleton className="h-6 w-24" />
+             </div>
+              <Skeleton className="h-8 w-8 rounded-full" />
+           </header>
+           <main className="flex flex-1 items-center justify-center">
+             <Skeleton className="h-96 w-full max-w-md" />
+           </main>
+         </div>
       );
   }
-  
-  const isPublicPage = publicRoutes.some(route => pathname.startsWith(route) && (pathname.length === route.length || route === '/'));
 
   return (
     <AuthContext.Provider value={{ user, userProfile, loading, logout }}>
-      {!isPublicPage && <MainHeader />}
+      {isAppPage && <MainHeader />}
       {children}
     </AuthContext.Provider>
   );
