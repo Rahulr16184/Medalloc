@@ -85,9 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  const isAuthRoute = pathname === '/login' || pathname === '/signup';
-
-  if (loading || (userProfile && publicRoutes.includes(pathname)) || (!userProfile && !publicRoutes.includes(pathname) && !isAuthRoute) ) {
+  if (loading) {
      return (
         <div className="flex h-screen w-screen items-center justify-center">
             <div className="w-full max-w-md space-y-4 p-4">
