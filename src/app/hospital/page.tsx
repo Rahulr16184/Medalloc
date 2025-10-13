@@ -15,16 +15,26 @@ export default function HospitalDashboardPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!userProfile) return;
+        if (!userProfile?.uid) {
+            setLoading(false);
+            return;
+        };
 
-        const unsub = onSnapshot(doc(db, "hospitals", userProfile.uid), (doc) => {
+        const hospitalRef = doc(db, "hospitals", userProfile.uid);
+        const unsubscribe = onSnapshot(hospitalRef, (doc) => {
             if (doc.exists()) {
                 setHospital(doc.data() as Hospital);
+            } else {
+                setHospital(null);
             }
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching hospital data:", error);
+            setHospital(null);
             setLoading(false);
         });
 
-        return () => unsub();
+        return () => unsubscribe();
     }, [userProfile]);
     
     if (loading) {
@@ -37,7 +47,7 @@ export default function HospitalDashboardPage() {
                 <Terminal className="h-4 w-4" />
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>
-                    Could not load hospital data. Please contact support.
+                    Could not load hospital data. This might be because the hospital document does not exist or there was a network issue. Please contact support if this persists.
                 </AlertDescription>
             </Alert>
         )
