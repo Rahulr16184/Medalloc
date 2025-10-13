@@ -39,12 +39,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
-        // If no user, stop loading and clear profile
-        setUserProfile(null);
-        setLoading(false);
-      } else if (currentUser && !currentUser.emailVerified) {
-        // If user exists but email is not verified, sign out
-        firebaseSignOut(auth);
         setUserProfile(null);
         setLoading(false);
       }
@@ -53,21 +47,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      // User is authenticated, now get profile
+    if (user?.uid) {
       const unsub = onSnapshot(doc(db, 'users', user.uid), (doc) => {
         if (doc.exists()) {
-          setUserProfile(doc.data() as UserProfile);
+            const profile = doc.data() as UserProfile;
+            if (user.emailVerified) {
+                setUserProfile(profile);
+            } else {
+                // If email not verified, don't set profile, effectively logging them out
+                setUserProfile(null);
+                firebaseSignOut(auth);
+            }
         } else {
           setUserProfile(null);
         }
         setLoading(false);
       }, () => {
-        // Error fetching profile
         setUserProfile(null);
         setLoading(false);
       });
       return () => unsub();
+    } else {
+        setLoading(false);
     }
   }, [user]);
 
@@ -81,13 +82,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // User is logged in
       const expectedRoute = roleBasedRedirects[userProfile.role];
       if (isAuthRoute || pathname === '/') {
-        // If user is on an auth page or the landing page, redirect to their dashboard
         router.push(expectedRoute);
       }
     } else {
       // User is not logged in
       if (!isPublicRoute) {
-        // If user is on a protected page, redirect to login
         router.push('/login');
       }
     }
@@ -95,35 +94,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await firebaseSignOut(auth);
+    setUserProfile(null);
     router.push('/login');
   };
 
   const value = { user, userProfile, loading, logout };
-  const isPublic = publicRoutes.includes(pathname);
 
   if (loading) {
-    return (
-        <div className="flex h-screen w-screen flex-col">
-          <header className="sticky top-0 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
-            <div className="flex items-center gap-2">
-                <Skeleton className="h-6 w-6" />
-                <Skeleton className="h-6 w-24" />
-            </div>
-             <Skeleton className="h-8 w-8 rounded-full" />
-          </header>
-          <div className="flex flex-1 items-center justify-center">
-            <div className="w-full max-w-md space-y-4 p-4">
-                <Skeleton className="h-96 w-full" />
+      return (
+          <div className="flex h-screen w-screen flex-col">
+            <header className="sticky top-0 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
+              <div className="flex items-center gap-2">
+                  <Skeleton className="h-6 w-6" />
+                  <Skeleton className="h-6 w-24" />
+              </div>
+               <Skeleton className="h-8 w-8 rounded-full" />
+            </header>
+            <div className="flex flex-1 items-center justify-center">
+              <div className="w-full max-w-md space-y-4 p-4">
+                  <Skeleton className="h-96 w-full" />
+              </div>
             </div>
           </div>
-        </div>
-    );
+      );
   }
 
   return (
     <AuthContext.Provider value={value}>
-        {!isPublic && userProfile && <MainHeader />}
-        {children}
+      {children}
     </AuthContext.Provider>
   );
 }

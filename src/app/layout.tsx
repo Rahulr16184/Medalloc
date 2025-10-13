@@ -1,8 +1,10 @@
+
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from '@/components/ui/toaster';
+import { MainHeader } from '@/components/headers/MainHeader';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -10,6 +12,15 @@ export const metadata: Metadata = {
   title: 'MEDALLOC: Hospital Bed Management System',
   description: 'A smart solution for real-time hospital bed allocation and demand forecasting.',
 };
+
+function AppLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <>
+            <MainHeader />
+            {children}
+        </>
+    )
+}
 
 export default function RootLayout({
   children,
@@ -25,7 +36,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} font-body antialiased`}>
         <AuthProvider>
-          {children}
+            {children}
         </AuthProvider>
         <Toaster />
       </body>
