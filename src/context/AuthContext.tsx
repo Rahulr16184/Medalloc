@@ -36,91 +36,98 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
-        setUserProfile(null);
         setLoading(false);
+        setUserProfile(null);
       }
     });
-    return () => unsubscribe();
+
+    return () => unsubscribeAuth();
   }, []);
 
   useEffect(() => {
-    if (user?.uid) {
-      const unsub = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-        if (doc.exists()) {
-            const profile = doc.data() as UserProfile;
-            if (user.emailVerified) {
-                setUserProfile(profile);
-            } else {
-                // If email not verified, don't set profile, effectively logging them out
-                setUserProfile(null);
-                firebaseSignOut(auth);
-            }
-        } else {
-          setUserProfile(null);
-        }
-        setLoading(false);
-      }, () => {
-        setUserProfile(null);
-        setLoading(false);
-      });
-      return () => unsub();
-    } else {
-        setLoading(false);
+    if (!user) {
+      setLoading(false);
+      return;
     }
+
+    if (!user.emailVerified) {
+        setLoading(false);
+        setUserProfile(null);
+        firebaseSignOut(auth);
+        return;
+    }
+
+    const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+      if (doc.exists()) {
+        setUserProfile(doc.data() as UserProfile);
+      } else {
+        setUserProfile(null);
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching user profile:", error);
+      setUserProfile(null);
+      setLoading(false);
+    });
+
+    return () => unsubscribeProfile();
   }, [user]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading) {
+      return;
+    }
 
-    const isPublicRoute = publicRoutes.includes(pathname);
-    const isAuthRoute = authRoutes.includes(pathname);
+    const isPublic = publicRoutes.some(route => pathname.startsWith(route) && (pathname.length === route.length || route === '/'));
+    const isAuthPage = authRoutes.includes(pathname);
 
-    if (userProfile) {
-      // User is logged in
+    if (userProfile) { // User is logged in
       const expectedRoute = roleBasedRedirects[userProfile.role];
-      if (isAuthRoute || pathname === '/') {
+      if (isAuthPage || pathname === '/') {
         router.push(expectedRoute);
+      } else if (!pathname.startsWith(expectedRoute)) {
+        // Optional: If a logged-in user is on a wrong dashboard, redirect them.
+        // router.push(expectedRoute);
       }
-    } else {
-      // User is not logged in
-      if (!isPublicRoute) {
+    } else { // User is not logged in
+      if (!isPublic) {
         router.push('/login');
       }
     }
-  }, [userProfile, loading, pathname, router]);
+  }, [loading, userProfile, pathname, router]);
 
   const logout = async () => {
     await firebaseSignOut(auth);
-    setUserProfile(null);
-    router.push('/login');
+    // State updates will handle the redirect
   };
-
-  const value = { user, userProfile, loading, logout };
-
+  
   if (loading) {
       return (
-          <div className="flex h-screen w-screen flex-col">
-            <header className="sticky top-0 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
-              <div className="flex items-center gap-2">
-                  <Skeleton className="h-6 w-6" />
-                  <Skeleton className="h-6 w-24" />
-              </div>
-               <Skeleton className="h-8 w-8 rounded-full" />
-            </header>
-            <div className="flex flex-1 items-center justify-center">
-              <div className="w-full max-w-md space-y-4 p-4">
-                  <Skeleton className="h-96 w-full" />
-              </div>
+        <div className="flex h-screen w-screen flex-col">
+          <header className="sticky top-0 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
+            <div className="flex items-center gap-2">
+                <Skeleton className="h-6 w-6" />
+                <Skeleton className="h-6 w-24" />
+            </div>
+             <Skeleton className="h-8 w-8 rounded-full" />
+          </header>
+          <div className="flex flex-1 items-center justify-center">
+            <div className="w-full max-w-md space-y-4 p-4">
+                <Skeleton className="h-96 w-full" />
             </div>
           </div>
+        </div>
       );
   }
+  
+  const isPublicPage = publicRoutes.some(route => pathname.startsWith(route) && (pathname.length === route.length || route === '/'));
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, userProfile, loading, logout }}>
+      {!isPublicPage && <MainHeader />}
       {children}
     </AuthContext.Provider>
   );
