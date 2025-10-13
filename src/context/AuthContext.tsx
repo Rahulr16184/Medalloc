@@ -20,6 +20,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const publicRoutes = ['/', '/login', '/signup'];
+const authRoutes = ['/login', '/signup'];
+
 const roleBasedRedirects: Record<UserRole, string> = {
   hospital: '/hospital',
   patient: '/patient',
@@ -34,9 +36,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      if (!user) {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (!currentUser) {
+        // If no user, stop loading and clear profile
+        setUserProfile(null);
+        setLoading(false);
+      } else if (currentUser && !currentUser.emailVerified) {
+        // If user exists but email is not verified, sign out
+        firebaseSignOut(auth);
         setUserProfile(null);
         setLoading(false);
       }
@@ -46,14 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (user) {
-      if (!user.emailVerified) {
-          if(auth.currentUser) {
-            firebaseSignOut(auth);
-          }
-          setUserProfile(null);
-          setLoading(false);
-          return;
-      }
+      // User is authenticated, now get profile
       const unsub = onSnapshot(doc(db, 'users', user.uid), (doc) => {
         if (doc.exists()) {
           setUserProfile(doc.data() as UserProfile);
@@ -62,28 +63,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setLoading(false);
       }, () => {
-        setLoading(false);
+        // Error fetching profile
         setUserProfile(null);
+        setLoading(false);
       });
       return () => unsub();
-    } else {
-        setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
     if (loading) return;
 
-    const isPublic = publicRoutes.some(route => pathname === route);
-    const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup');
+    const isPublicRoute = publicRoutes.includes(pathname);
+    const isAuthRoute = authRoutes.includes(pathname);
 
     if (userProfile) {
+      // User is logged in
       const expectedRoute = roleBasedRedirects[userProfile.role];
       if (isAuthRoute || pathname === '/') {
+        // If user is on an auth page or the landing page, redirect to their dashboard
         router.push(expectedRoute);
       }
-    } else if (!isPublic) {
-      router.push('/login');
+    } else {
+      // User is not logged in
+      if (!isPublicRoute) {
+        // If user is on a protected page, redirect to login
+        router.push('/login');
+      }
     }
   }, [userProfile, loading, pathname, router]);
 
@@ -91,9 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
     router.push('/login');
   };
-  
+
   const value = { user, userProfile, loading, logout };
-  const isPublicRoute = publicRoutes.some(route => pathname === route);
+  const isPublic = publicRoutes.includes(pathname);
 
   if (loading) {
     return (
@@ -116,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={value}>
-        {!isPublicRoute && <MainHeader />}
+        {!isPublic && userProfile && <MainHeader />}
         {children}
     </AuthContext.Provider>
   );
