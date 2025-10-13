@@ -4,6 +4,7 @@
 import Link from "next/link"
 import { Hospital } from 'lucide-react';
 import { UserNav } from "../dashboard/UserNav";
+import { ModeToggle } from "../ModeToggle";
 
 export function MainHeader() {
     return (
@@ -12,7 +13,10 @@ export function MainHeader() {
                 <Hospital className="h-6 w-6 text-primary" />
                 <span className="font-bold">MEDALLOC</span>
             </Link>
-            <UserNav />
+            <div className="flex items-center gap-2">
+                <ModeToggle />
+                <UserNav />
+            </div>
         </header>
     )
 }
