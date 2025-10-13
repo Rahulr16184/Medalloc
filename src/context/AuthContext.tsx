@@ -47,7 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user) {
       if (!user.emailVerified) {
-          firebaseSignOut(auth);
+          if(auth.currentUser) {
+            firebaseSignOut(auth);
+          }
           setUserProfile(null);
           setLoading(false);
           return;
@@ -60,7 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setLoading(false);
       }, () => {
-        // Handle error, e.g. client offline
         setLoading(false);
         setUserProfile(null);
       });
@@ -74,12 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (loading) return;
 
     const isPublic = publicRoutes.some(route => pathname === route);
+    const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup');
 
     if (userProfile) {
       const expectedRoute = roleBasedRedirects[userProfile.role];
-      if (isPublic) {
-        router.push(expectedRoute);
-      } else if (!pathname.startsWith(expectedRoute)) {
+      if (isAuthRoute || pathname === '/') {
         router.push(expectedRoute);
       }
     } else if (!isPublic) {
@@ -91,33 +91,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
     router.push('/login');
   };
-
+  
+  const value = { user, userProfile, loading, logout };
   const isPublicRoute = publicRoutes.some(route => pathname === route);
 
-  const value = { user, userProfile, loading, logout };
-
   if (loading) {
-     return (
-      <AuthContext.Provider value={value}>
+    return (
         <div className="flex h-screen w-screen flex-col">
-          <MainHeader />
+          <header className="sticky top-0 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
+            <div className="flex items-center gap-2">
+                <Skeleton className="h-6 w-6" />
+                <Skeleton className="h-6 w-24" />
+            </div>
+             <Skeleton className="h-8 w-8 rounded-full" />
+          </header>
           <div className="flex flex-1 items-center justify-center">
             <div className="w-full max-w-md space-y-4 p-4">
                 <Skeleton className="h-96 w-full" />
             </div>
           </div>
         </div>
-      </AuthContext.Provider>
     );
   }
 
   return (
     <AuthContext.Provider value={value}>
-      {isPublicRoute ? children : (
-        <>
-          {children}
-        </>
-      )}
+        {!isPublicRoute && <MainHeader />}
+        {children}
     </AuthContext.Provider>
   );
 }
