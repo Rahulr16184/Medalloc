@@ -84,7 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
     router.push('/login');
   };
-
+  
+  // While initial auth check is running, show a full-page loader.
   if (loading) {
      return (
         <div className="flex h-screen w-screen items-center justify-center">
@@ -96,10 +97,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      );
   }
 
+  // If user is not logged in and on a public route, show the page.
+  if (!userProfile && publicRoutes.includes(pathname)) {
+    return (
+        <AuthContext.Provider value={{ user, userProfile, loading, logout }}>
+            {children}
+        </AuthContext.Provider>
+    );
+  }
+  
+  // If user is logged in, and we are on the correct route, show the page
+  if(userProfile && pathname.startsWith(roleBasedRedirects[userProfile.role])) {
+    return (
+      <AuthContext.Provider value={{ user, userProfile, loading, logout }}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
+
+
+  // In all other cases (e.g. redirecting), show a loader to prevent flicker.
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, logout }}>
-      {children}
-    </AuthContext.Provider>
+    <div className="flex h-screen w-screen items-center justify-center">
+        <div className="w-full max-w-md space-y-4 p-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-96 w-full" />
+        </div>
+    </div>
   );
 }
 
