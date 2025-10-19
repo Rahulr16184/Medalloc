@@ -21,7 +21,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const publicRoutes = ['/', '/login', '/signup'];
-const authRoutes = ['/login', 'signup'];
+const authRoutes = ['/login', '/signup'];
 
 const roleBasedRedirects: Record<UserRole, string> = {
   hospital: '/hospital',
@@ -42,14 +42,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!auth) return;
 
     const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
-      setLoading(true); // Start loading whenever auth state changes
+      setLoading(true);
       if (currentUser && currentUser.emailVerified) {
         setUser(currentUser);
       } else {
         setUser(null);
         setUserProfile(null);
         setHospital(null);
-        setLoading(false); // No user or not verified, stop loading
+        setLoading(false);
       }
     });
 
@@ -58,70 +58,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) {
-        return;
+      if (!loading) setLoading(false);
+      return;
     }
 
-    const profileUnsubscribe = onSnapshot(
-      doc(db, 'users', user.uid),
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const profile = docSnap.data() as UserProfile;
-          setUserProfile(profile);
+    const profileUnsubscribe = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        const profile = docSnap.data() as UserProfile;
+        setUserProfile(profile);
 
-          if (profile.role === 'hospital') {
-            const hospitalUnsubscribe = onSnapshot(
-              doc(db, 'hospitals', user.uid),
-              (hospitalDoc) => {
-                setHospital(hospitalDoc.exists() ? hospitalDoc.data() as Hospital : null);
-                setLoading(false);
-              },
-              (error) => {
-                 console.error("Error fetching hospital data:", error);
-                 setHospital(null);
-                 setLoading(false);
-              }
-            );
-            return () => hospitalUnsubscribe();
-          } else {
-            setHospital(null);
-            setLoading(false);
-          }
-        } else {
-          setUserProfile(null);
+        // If user is not a hospital, we are done loading their profile.
+        if (profile.role !== 'hospital') {
           setHospital(null);
           setLoading(false);
         }
-      },
-      (error) => {
-        console.error("Error fetching user profile:", error);
+      } else {
+        // No profile found, treat as logged out for data purposes
         setUserProfile(null);
         setHospital(null);
         setLoading(false);
       }
-    );
+    }, (error) => {
+      console.error("Error fetching user profile:", error);
+      setUserProfile(null);
+      setHospital(null);
+      setLoading(false);
+    });
 
     return () => profileUnsubscribe();
-  }, [user]);
+  }, [user, loading]);
 
   useEffect(() => {
-    if (loading) {
-      return; // Don't do anything while loading
+    if (userProfile?.role !== 'hospital' || !user) {
+      return;
     }
     
-    const isAuthPage = authRoutes.includes(pathname.split('/')[1]);
-    const isPublicPage = publicRoutes.includes(pathname);
+    const hospitalUnsubscribe = onSnapshot(doc(db, 'hospitals', user.uid), (hospitalDoc) => {
+      if (hospitalDoc.exists()) {
+        setHospital(hospitalDoc.data() as Hospital);
+      } else {
+        setHospital(null);
+      }
+      // This is the final loading step for a hospital user
+      setLoading(false);
+    }, (error) => {
+       console.error("Error fetching hospital data:", error);
+       setHospital(null);
+       setLoading(false);
+    });
 
-    if (userProfile) { // User is logged in and profile is loaded
+    return () => hospitalUnsubscribe();
+
+  }, [userProfile, user]);
+
+  useEffect(() => {
+    if (loading) return; // Do not run routing logic while loading
+
+    const isAuthPage = authRoutes.includes(pathname);
+    const isPublicPage = publicRoutes.includes(pathname);
+    const isProtectedRoute = !isPublicPage && !isAuthPage;
+
+    if (userProfile?.role) { // User is logged in and profile is loaded
       const destination = roleBasedRedirects[userProfile.role];
-      if (isAuthPage || isPublicPage) {
+      if ((isAuthPage || isPublicPage) && destination) {
         router.push(destination);
       }
     } else { // User is not logged in
-      if (!isPublicPage && !isAuthPage) {
+      if (isProtectedRoute) {
         router.push('/login');
       }
     }
-
   }, [loading, userProfile, pathname, router]);
 
   const logout = async () => {
@@ -130,8 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push('/login');
     }
   };
-
-  const isPublicOrAuthPage = publicRoutes.includes(pathname) || authRoutes.includes(pathname.split('/')[1]);
+  
+  const isPublicOrAuthPage = publicRoutes.includes(pathname) || authRoutes.includes(pathname);
 
   if (loading && !isPublicOrAuthPage) {
     return (
