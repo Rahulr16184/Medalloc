@@ -3,14 +3,15 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, BarChart3, BedDouble } from 'lucide-react';
+import { LayoutDashboard, BarChart3, BedDouble, Building } from 'lucide-react';
 import { ScrollArea, ScrollBar } from "../ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 const navItems = [
     { href: "/hospital", label: "My Hospital", icon: <LayoutDashboard className="h-4 w-4" /> },
     { href: "/hospital/beds", label: "Bed Management", icon: <BedDouble className="h-4 w-4" /> },
-    { href: "/hospital/forecasting", label: "Demand Forecasting", icon: <BarChart3 className="h-4 w-4" /> },
+    { href: "/hospital/departments", label: "Departments & Beds", icon: <Building className="h-4 w-4" /> },
+    { href: "/hospital/forecasting", label: "Demand Forecasting", icon: <BarChart3.5 className="h-4 w-4" /> },
 ];
 
 
@@ -26,7 +27,7 @@ export function HospitalHeader() {
                             href={item.href}
                             className={cn(
                                 "flex items-center gap-2 rounded-lg px-3 py-2 transition-all hover:bg-muted hover:text-foreground",
-                                pathname === item.href ? "bg-accent text-accent-foreground" : "text-foreground"
+                                pathname.startsWith(item.href) && (pathname === item.href || (item.href !== '/hospital' && pathname.includes(item.href))) ? "bg-accent text-accent-foreground" : "text-foreground"
                             )}
                         >
                             {item.icon}

@@ -22,3 +22,32 @@ export interface Hospital {
   postalCode?: string;
   district?: string;
 }
+
+export interface Department {
+  id: string;
+  name: string;
+  description?: string;
+  hospitalId: string;
+}
+
+export type BedStatus = 'Available' | 'Occupied' | 'Cleaning' | 'Maintenance';
+
+export const bedTypes = [
+    'General Ward', 'ICU', 'CCU', 'NICU', 'PICU', 
+    'Maternity', 'Emergency', 'Operation Theatre', 
+    'Recovery', 'Isolation', 'Private', 'Semi-Private', 
+    'Dialysis', 'Burn Unit', 'Step-Down', 'Observation',
+    'Palliative', 'Other'
+];
+
+
+export interface Bed {
+  id: string;
+  bedId: string; // User-defined ID like 'ICU-001'
+  type: string; // e.g., 'ICU', 'General Ward'
+  status: BedStatus;
+  departmentId: string;
+  hospitalId: string;
+  patientId?: string | null;
+  notes?: string;
+}
