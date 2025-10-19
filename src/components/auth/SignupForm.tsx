@@ -3,6 +3,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -66,6 +67,7 @@ const formSchema = z.object({
 
 export function SignupForm() {
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
   const { toast } = useToast();
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -134,9 +136,8 @@ export function SignupForm() {
         title: "Verification Email Sent",
         description: "Your account has been created. Please check your email to verify your account before logging in.",
       });
-      // AuthContext will handle redirection, but user needs to verify first.
-      // Maybe redirect to a "please verify" page or just to login.
-      // For now, it will redirect to login page.
+
+      router.push('/login');
       
     } catch (error: any) {
       toast({
@@ -314,3 +315,5 @@ export function SignupForm() {
     </Card>
   );
 }
+
+    
