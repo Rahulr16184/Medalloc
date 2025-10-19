@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
-import { collection, doc, setDoc, addDoc } from "firebase/firestore";
+import { collection, doc, setDoc, addDoc, writeBatch } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +48,7 @@ const formSchema = z.object({
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Hospital name is required.", path: ["hospitalName"] });
         }
         if (!data.address) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Address is required.", path: ["address"] });
+            ctx.addIssue({ code: z.ZodIssue.custom, message: "Address is required.", path: ["address"] });
         }
         if (!data.city) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "City is required.", path: ["city"] });
@@ -105,6 +105,8 @@ export function SignupForm() {
 
       await sendEmailVerification(user);
 
+      const batch = writeBatch(db);
+
       // Create user profile in Firestore
       const userProfile = {
         uid: user.uid,
@@ -112,7 +114,8 @@ export function SignupForm() {
         email: values.email,
         role: values.role as UserRole,
       };
-      await setDoc(doc(db, "users", user.uid), userProfile);
+      const userDocRef = doc(db, "users", user.uid);
+      batch.set(userDocRef, userProfile);
 
       // If hospital, create hospital document and default departments/beds
       if (values.role === 'hospital') {
@@ -130,21 +133,28 @@ export function SignupForm() {
           postalCode: values.postalCode,
           district: values.district,
         };
-        await setDoc(doc(db, "hospitals", user.uid), hospitalData);
+        const hospitalDocRef = doc(db, "hospitals", user.uid);
+        batch.set(hospitalDocRef, hospitalData);
         
+        let initialTotalBeds = 0;
+
         // Create default departments and beds
         for (const dept of defaultDepartments) {
           const departmentsRef = collection(db, "hospitals", user.uid, "departments");
-          const deptDocRef = await addDoc(departmentsRef, {
+          const deptDocRef = doc(departmentsRef); // generate new doc ref
+          batch.set(deptDocRef, {
             name: dept.name,
             description: dept.description,
+            defaultBedType: dept.defaultBedType,
             hospitalId: user.uid,
           });
 
           // Add a couple of default beds to each department
           const bedsRef = collection(db, "hospitals", user.uid, "departments", deptDocRef.id, "beds");
-          const bedPrefix = dept.name.substring(0, 3).toUpperCase();
-          await addDoc(bedsRef, {
+          const bedPrefix = dept.name.replace(/[^A-Z]/gi, '').substring(0, 3).toUpperCase();
+          
+          const bed1Ref = doc(bedsRef);
+          batch.set(bed1Ref, {
             bedId: `${bedPrefix}-01`,
             type: dept.defaultBedType,
             status: 'Available',
@@ -152,7 +162,9 @@ export function SignupForm() {
             hospitalId: user.uid,
             notes: 'Default bed'
           });
-          await addDoc(bedsRef, {
+
+           const bed2Ref = doc(bedsRef);
+           batch.set(bed2Ref, {
             bedId: `${bedPrefix}-02`,
             type: dept.defaultBedType,
             status: 'Available',
@@ -160,9 +172,14 @@ export function SignupForm() {
             hospitalId: user.uid,
             notes: 'Default bed'
           });
+          initialTotalBeds += 2;
         }
+
+        batch.update(hospitalDocRef, { totalBeds: initialTotalBeds });
       }
       
+      await batch.commit();
+
       toast({
         title: "Verification Email Sent",
         description: "Your account has been created. Please check your email to verify your account before logging in.",
@@ -174,7 +191,9 @@ export function SignupForm() {
       toast({
         variant: "destructive",
         title: "Sign Up Failed",
-        description: error.message || "An unexpected error occurred.",
+        description: error.code === 'auth/email-already-in-use' 
+            ? 'An account with this email already exists.' 
+            : (error.message || "An unexpected error occurred."),
       });
     } finally {
       setLoading(false);
@@ -182,7 +201,7 @@ export function SignupForm() {
   }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-lg">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Create an Account</CardTitle>
         <CardDescription>Join MEDALLOC to streamline bed management.</CardDescription>
@@ -223,26 +242,28 @@ export function SignupForm() {
                     </FormItem>
                   )}
                 />
-                <FormField control={form.control} name="password" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="password" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm Password</FormLabel>
-                      <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm Password</FormLabel>
+                          <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                </div>
 
                 <div className={cn("space-y-4 pt-4 border-t transition-all duration-300", role === 'hospital' ? 'block' : 'hidden' )}>
-                    <h3 className="text-lg font-medium">Hospital Details</h3>
+                    <h3 className="text-lg font-medium text-center">Hospital Details</h3>
                     <FormField control={form.control} name="hospitalName" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Hospital Name</FormLabel>
@@ -286,7 +307,7 @@ export function SignupForm() {
                               <FormLabel>State</FormLabel>
                               <Select onValueChange={(value) => {
                                   field.onChange(value);
-                                  form.resetField('district');
+                                  form.setValue('district', ''); // Reset district on state change
                               }} defaultValue={field.value}>
                                   <FormControl>
                                   <SelectTrigger>
@@ -346,3 +367,5 @@ export function SignupForm() {
     </Card>
   );
 }
+
+    

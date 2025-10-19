@@ -28,6 +28,7 @@ export interface Department {
   name: string;
   description?: string;
   hospitalId: string;
+  defaultBedType?: string;
 }
 
 export type BedStatus = 'Available' | 'Occupied' | 'Cleaning' | 'Maintenance';
@@ -45,6 +46,8 @@ export const defaultDepartments = [
   { name: 'Intensive Care Unit (ICU)', description: 'For critically ill patients needing constant monitoring.', defaultBedType: 'ICU' },
   { name: 'Maternity Ward', description: 'For pregnant mothers and delivery care.', defaultBedType: 'Maternity' },
   { name: 'Emergency', description: 'For trauma, accidents, and urgent medical admissions.', defaultBedType: 'Emergency' },
+  { name: 'Pediatric ICU (PICU)', description: 'For critically ill children.', defaultBedType: 'PICU' },
+  { name: 'Operation Theatre', description: 'For surgical procedures.', defaultBedType: 'Operation Theatre' },
 ];
 
 

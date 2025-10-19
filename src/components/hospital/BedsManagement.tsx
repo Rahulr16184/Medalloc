@@ -4,15 +4,15 @@
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Bed, BedStatus, Department, bedTypes } from "@/types";
-import { collection, onSnapshot, addDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Skeleton } from "../ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { Loader2, Terminal, PlusCircle, Bed as BedIcon, Edit, MoreHorizontal } from "lucide-react";
+import { Loader2, Terminal, PlusCircle, Edit, MoreHorizontal, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
 
 const bedFormSchema = z.object({
   bedId: z.string().min(1, "Bed ID is required."),
@@ -43,6 +44,7 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingBed, setEditingBed] = useState<Bed | null>(null);
+    const [bedToDelete, setBedToDelete] = useState<Bed | null>(null);
 
     const form = useForm<z.infer<typeof bedFormSchema>>({
         resolver: zodResolver(bedFormSchema),
@@ -71,7 +73,7 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
 
         const bedsRef = collection(db, "hospitals", userProfile.uid, "departments", departmentId, "beds");
         const bedsUnsubscribe = onSnapshot(bedsRef, (snapshot) => {
-            const bedsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bed));
+            const bedsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bed)).sort((a, b) => a.bedId.localeCompare(b.bedId));
             setBeds(bedsData);
             setLoading(false);
         }, (error) => {
@@ -106,10 +108,25 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
             }
             setIsFormOpen(false);
             setEditingBed(null);
+            form.reset();
         } catch (error: any) {
             toast({ variant: "destructive", title: "Submission Failed", description: error.message });
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleDeleteBed = async () => {
+        if (!bedToDelete || !userProfile) return;
+
+        const bedRef = doc(db, "hospitals", userProfile.uid, "departments", departmentId, "beds", bedToDelete.id);
+        try {
+            await deleteDoc(bedRef);
+            toast({ title: "Bed Deleted", description: `Bed ${bedToDelete.bedId} has been removed.` });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Deletion Failed", description: error.message });
+        } finally {
+            setBedToDelete(null);
         }
     };
 
@@ -122,7 +139,7 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
             notes: bed.notes || "",
         } : {
             bedId: "",
-            type: "",
+            type: department?.defaultBedType || "",
             status: "Available",
             notes: "",
         });
@@ -139,6 +156,7 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
     if (loading) {
         return (
             <div className="space-y-4">
+                <Skeleton className="h-10 w-1/2" />
                 <Skeleton className="h-10 w-1/4" />
                 <Skeleton className="h-64 w-full" />
             </div>
@@ -160,8 +178,8 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
-                        <CardTitle>Bed Management: {department.name}</CardTitle>
-                        <CardDescription>View, add, and manage beds in this department.</CardDescription>
+                        <CardTitle className="text-2xl">Bed Management: {department.name}</CardTitle>
+                        <CardDescription>{department.description}</CardDescription>
                     </div>
                     <Button onClick={() => openForm()}>
                         <PlusCircle className="mr-2 h-4 w-4" />
@@ -187,7 +205,7 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
                                     <TableCell>
                                         <Badge variant={statusVariant[bed.status]}>{bed.status}</Badge>
                                     </TableCell>
-                                    <TableCell>{bed.notes}</TableCell>
+                                    <TableCell className="text-muted-foreground">{bed.notes || '-'}</TableCell>
                                     <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
@@ -201,14 +219,18 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
                                                     <Edit className="mr-2 h-4 w-4" />
                                                     Edit
                                                 </DropdownMenuItem>
+                                                 <DropdownMenuItem onClick={() => setBedToDelete(bed)} className="text-red-600">
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Delete
+                                                </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             )) : (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center">
-                                        No beds found in this department.
+                                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                                        No beds found. Click "Add Bed" to get started.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -217,7 +239,14 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
                 </CardContent>
             </Card>
 
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            {/* Add/Edit Bed Dialog */}
+            <Dialog open={isFormOpen} onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    form.reset();
+                    setEditingBed(null);
+                }
+                setIsFormOpen(isOpen);
+            }}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>{editingBed ? "Edit Bed" : "Add a New Bed"}</DialogTitle>
@@ -272,15 +301,36 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
                                     <FormMessage />
                                 </FormItem>
                             )} />
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {editingBed ? "Save Changes" : "Create Bed"}
-                            </Button>
+                             <DialogFooter>
+                                <Button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {editingBed ? "Save Changes" : "Create Bed"}
+                                </Button>
+                            </DialogFooter>
                         </form>
                     </Form>
                 </DialogContent>
             </Dialog>
+
+             {/* Delete Confirmation Dialog */}
+            <AlertDialog open={!!bedToDelete} onOpenChange={(isOpen) => !isOpen && setBedToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the bed <span className="font-bold">{bedToDelete?.bedId}</span>.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteBed} className="bg-destructive hover:bg-destructive/90">
+                        Delete
+                    </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }
 
+    
