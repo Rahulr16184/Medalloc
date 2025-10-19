@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { collection, doc, setDoc, addDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import indianStates from "@/lib/india-states-districts.json";
+import { defaultDepartments } from "@/types";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -113,7 +114,7 @@ export function SignupForm() {
       };
       await setDoc(doc(db, "users", user.uid), userProfile);
 
-      // If hospital, create hospital document
+      // If hospital, create hospital document and default departments/beds
       if (values.role === 'hospital') {
         const hospitalData = {
           uid: user.uid,
@@ -130,6 +131,36 @@ export function SignupForm() {
           district: values.district,
         };
         await setDoc(doc(db, "hospitals", user.uid), hospitalData);
+        
+        // Create default departments and beds
+        for (const dept of defaultDepartments) {
+          const departmentsRef = collection(db, "hospitals", user.uid, "departments");
+          const deptDocRef = await addDoc(departmentsRef, {
+            name: dept.name,
+            description: dept.description,
+            hospitalId: user.uid,
+          });
+
+          // Add a couple of default beds to each department
+          const bedsRef = collection(db, "hospitals", user.uid, "departments", deptDocRef.id, "beds");
+          const bedPrefix = dept.name.substring(0, 3).toUpperCase();
+          await addDoc(bedsRef, {
+            bedId: `${bedPrefix}-01`,
+            type: dept.defaultBedType,
+            status: 'Available',
+            departmentId: deptDocRef.id,
+            hospitalId: user.uid,
+            notes: 'Default bed'
+          });
+          await addDoc(bedsRef, {
+            bedId: `${bedPrefix}-02`,
+            type: dept.defaultBedType,
+            status: 'Available',
+            departmentId: deptDocRef.id,
+            hospitalId: user.uid,
+            notes: 'Default bed'
+          });
+        }
       }
       
       toast({
@@ -282,7 +313,7 @@ export function SignupForm() {
                                   <FormControl>
                                   <SelectTrigger>
                                       <SelectValue placeholder="Select a district" />
-                                  </SelectTrigger>
+                                  </Trigger>
                                   </FormControl>
                                   <SelectContent>
                                   {districts.map(d => (
@@ -315,5 +346,3 @@ export function SignupForm() {
     </Card>
   );
 }
-
-    

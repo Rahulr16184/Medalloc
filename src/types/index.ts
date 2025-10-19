@@ -40,6 +40,13 @@ export const bedTypes = [
     'Palliative', 'Other'
 ];
 
+export const defaultDepartments = [
+  { name: 'General Ward', description: 'For stable patients requiring general medical care.', defaultBedType: 'General Ward' },
+  { name: 'Intensive Care Unit (ICU)', description: 'For critically ill patients needing constant monitoring.', defaultBedType: 'ICU' },
+  { name: 'Maternity Ward', description: 'For pregnant mothers and delivery care.', defaultBedType: 'Maternity' },
+  { name: 'Emergency', description: 'For trauma, accidents, and urgent medical admissions.', defaultBedType: 'Emergency' },
+];
+
 
 export interface Bed {
   id: string;
@@ -51,3 +58,5 @@ export interface Bed {
   patientId?: string | null;
   notes?: string;
 }
+
+    
