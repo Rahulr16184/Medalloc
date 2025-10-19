@@ -313,7 +313,7 @@ export function SignupForm() {
                                   <FormControl>
                                   <SelectTrigger>
                                       <SelectValue placeholder="Select a district" />
-                                  </Trigger>
+                                  </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
                                   {districts.map(d => (
