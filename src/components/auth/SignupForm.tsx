@@ -48,7 +48,7 @@ const formSchema = z.object({
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Hospital name is required.", path: ["hospitalName"] });
         }
         if (!data.address) {
-            ctx.addIssue({ code: z.ZodIssue.custom, message: "Address is required.", path: ["address"] });
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Address is required.", path: ["address"] });
         }
         if (!data.city) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "City is required.", path: ["city"] });
