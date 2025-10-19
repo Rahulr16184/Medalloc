@@ -36,58 +36,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setLoading(true);
       if (currentUser && currentUser.emailVerified) {
         setUser(currentUser);
+        // Start listening to profile, but don't set loading to false yet
+        const unsubscribeProfile = onSnapshot(
+          doc(db, 'users', currentUser.uid),
+          (doc) => {
+            if (doc.exists()) {
+              setUserProfile(doc.data() as UserProfile);
+            } else {
+              // User exists in Auth but not in Firestore. Log them out.
+              firebaseSignOut(auth); 
+              setUserProfile(null);
+            }
+            setLoading(false); // End loading only after profile is fetched/checked
+          },
+          (error) => {
+            console.error("Error fetching user profile:", error);
+            firebaseSignOut(auth);
+            setUserProfile(null);
+            setLoading(false);
+          }
+        );
+        return () => unsubscribeProfile();
       } else {
         setUser(null);
         setUserProfile(null);
-        setLoading(false);
+        setLoading(false); // User is not logged in, we can stop loading.
       }
     });
+
     return () => unsubscribeAuth();
   }, []);
 
   useEffect(() => {
-    if (user) {
-      const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), 
-        (doc) => {
-          if (doc.exists()) {
-            setUserProfile(doc.data() as UserProfile);
-          } else {
-            // This case can happen if the user doc is not created yet or deleted.
-            // Logging them out is a safe fallback.
-            firebaseSignOut(auth);
-          }
-          setLoading(false);
-        }, 
-        (error) => {
-          console.error("Error fetching user profile:", error);
-          // Also log out on error to prevent being stuck.
-          firebaseSignOut(auth);
-          setLoading(false);
-        }
-      );
-      return () => unsubscribeProfile();
-    }
-  }, [user]);
-
-  useEffect(() => {
+    // Wait until the initial loading is complete before doing any routing.
     if (loading) {
-      return; // Wait until loading is false before checking routes
+      return;
     }
 
     const isPublicPage = publicRoutes.some(route => pathname === route || (route === '/' && pathname.startsWith('/#')));
     const isAuthPage = authRoutes.includes(pathname);
 
-    if (userProfile) { // User is logged in and has a profile
+    if (userProfile) {
+      // User is logged in and has a profile.
       const expectedRoute = roleBasedRedirects[userProfile.role];
       // If user is on an auth page (login/signup) or the landing page, redirect them.
       if (isAuthPage || pathname === '/') {
         router.push(expectedRoute);
       }
-    } else { // User is not logged in
-      // If the user is on a protected page, redirect to login.
+    } else {
+      // User is not logged in.
+      // If the user tries to access a protected page, redirect to login.
       if (!isPublicPage) {
         router.push('/login');
       }
@@ -95,17 +95,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [userProfile, loading, pathname, router]);
 
   const logout = async () => {
+    setLoading(true);
     await firebaseSignOut(auth);
-    // User state will be cleared by onAuthStateChanged, triggering re-route.
+    // Setting user/profile to null and redirecting is handled by onAuthStateChanged
+    router.push('/login');
+    setLoading(false);
   };
-
-  if (loading) {
-    return (
+  
+  // While loading, or if we are redirecting, show a full-page skeleton.
+  const isPublicPage = publicRoutes.some(route => pathname === route || (route === '/' && pathname.startsWith('/#')));
+  if (loading || (!userProfile && !isPublicPage) || (userProfile && (authRoutes.includes(pathname) || pathname === '/'))) {
+     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center">
         <Skeleton className="h-full w-full" />
       </div>
     );
   }
+
 
   return (
     <AuthContext.Provider value={{ user, userProfile, loading, logout }}>
