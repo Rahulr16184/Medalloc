@@ -4,13 +4,13 @@
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Bed, BedStatus, Department, bedTypes } from "@/types";
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, increment } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, increment, query, getDocs, orderBy, limit } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Skeleton } from "../ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { Loader2, Terminal, PlusCircle, Edit, MoreHorizontal, Trash2 } from "lucide-react";
+import { Loader2, Terminal, PlusCircle, Edit, MoreHorizontal, Trash2, BedDouble } from "lucide-react";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
@@ -23,12 +23,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
+import { addMultipleBeds } from "./actions";
 
 const bedFormSchema = z.object({
   bedId: z.string().min(1, "Bed ID is required."),
   type: z.string().min(1, "Bed type is required."),
   status: z.enum(['Available', 'Occupied', 'Cleaning', 'Maintenance']),
   notes: z.string().optional(),
+});
+
+const bulkAddSchema = z.object({
+  numberOfBeds: z.coerce.number().min(1, "At least one bed is required.").max(50, "You can add a maximum of 50 beds at a time."),
 });
 
 interface BedsManagementProps {
@@ -45,15 +50,16 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingBed, setEditingBed] = useState<Bed | null>(null);
     const [bedToDelete, setBedToDelete] = useState<Bed | null>(null);
+    const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
 
     const form = useForm<z.infer<typeof bedFormSchema>>({
         resolver: zodResolver(bedFormSchema),
-        defaultValues: {
-            bedId: "",
-            type: "",
-            status: "Available",
-            notes: "",
-        },
+        defaultValues: { bedId: "", type: "", status: "Available", notes: "" },
+    });
+
+    const bulkAddForm = useForm<z.infer<typeof bulkAddSchema>>({
+        resolver: zodResolver(bulkAddSchema),
+        defaultValues: { numberOfBeds: 10 },
     });
 
     useEffect(() => {
@@ -73,8 +79,8 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
         });
 
         const bedsRef = collection(db, "hospitals", userProfile.uid, "departments", departmentId, "beds");
-        const bedsUnsubscribe = onSnapshot(bedsRef, (snapshot) => {
-            const bedsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bed)).sort((a, b) => a.bedId.localeCompare(b.bedId));
+        const bedsUnsubscribe = onSnapshot(query(bedsRef, orderBy("bedId")), (snapshot) => {
+            const bedsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bed));
             setBeds(bedsData);
             setLoading(false);
         }, (error) => {
@@ -97,18 +103,12 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
         const hospitalRef = doc(db, "hospitals", userProfile.uid);
 
         try {
-            const bedData = {
-                ...values,
-                hospitalId: userProfile.uid,
-                departmentId: departmentId,
-                notes: values.notes || ""
-            };
+            const bedData = { ...values, hospitalId: userProfile.uid, departmentId: departmentId, notes: values.notes || "" };
 
             if(editingBed) {
                 const bedRef = doc(db, "hospitals", userProfile.uid, "departments", departmentId, "beds", editingBed.id);
                 batch.update(bedRef, bedData);
 
-                // Update hospital's occupied bed count if status changed
                 if(editingBed.status !== values.status) {
                     if (values.status === 'Occupied') {
                         batch.update(hospitalRef, { occupiedBeds: increment(1) });
@@ -140,10 +140,31 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
             setIsSubmitting(false);
         }
     };
+    
+    const handleBulkAddSubmit = async (values: z.infer<typeof bulkAddSchema>) => {
+        if (!userProfile || !department) return;
+        setIsSubmitting(true);
+        try {
+            const result = await addMultipleBeds({
+                hospitalId: userProfile.uid,
+                departmentId: department.id,
+                departmentName: department.name,
+                defaultBedType: department.defaultBedType || 'General Ward',
+                numberOfBeds: values.numberOfBeds,
+            });
+             toast({ title: "Success", description: result.message });
+             setIsBulkAddOpen(false);
+             bulkAddForm.reset();
+        } catch (error: any) {
+             toast({ variant: "destructive", title: "Bulk Add Failed", description: error.message });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     const handleDeleteBed = async () => {
         if (!bedToDelete || !userProfile) return;
-
+        setIsSubmitting(true);
         const batch = writeBatch(db);
         const bedRef = doc(db, "hospitals", userProfile.uid, "departments", departmentId, "beds", bedToDelete.id);
         const hospitalRef = doc(db, "hospitals", userProfile.uid);
@@ -161,30 +182,22 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
             toast({ variant: "destructive", title: "Deletion Failed", description: error.message });
         } finally {
             setBedToDelete(null);
+            setIsSubmitting(false);
         }
     };
 
     const openForm = (bed: Bed | null = null) => {
         setEditingBed(bed);
         form.reset(bed ? {
-            bedId: bed.bedId,
-            type: bed.type,
-            status: bed.status,
-            notes: bed.notes || "",
+            bedId: bed.bedId, type: bed.type, status: bed.status, notes: bed.notes || "",
         } : {
-            bedId: "",
-            type: department?.defaultBedType || bedTypes[0],
-            status: "Available",
-            notes: "",
+            bedId: "", type: department?.defaultBedType || bedTypes[0], status: "Available", notes: "",
         });
         setIsFormOpen(true);
     };
 
     const statusVariant: Record<BedStatus, "default" | "secondary" | "destructive" | "outline"> = {
-        Available: "default",
-        Occupied: "destructive",
-        Cleaning: "secondary",
-        Maintenance: "outline",
+        Available: "default", Occupied: "destructive", Cleaning: "secondary", Maintenance: "outline",
     };
 
     if (loading) {
@@ -210,15 +223,21 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
     return (
         <>
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex-wrap gap-y-4 flex flex-row items-center justify-between">
                     <div>
                         <CardTitle className="text-2xl">Manage Beds: {department.name}</CardTitle>
-                        <CardDescription>Add, edit, or remove beds for this department.</CardDescription>
+                        <CardDescription>Add, edit, or remove beds for this department. Total beds: {beds.length}</CardDescription>
                     </div>
-                    <Button onClick={() => openForm()}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Bed
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => setIsBulkAddOpen(true)}>
+                            <BedDouble className="mr-2 h-4 w-4" />
+                            Bulk Add Beds
+                        </Button>
+                        <Button onClick={() => openForm()}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Single Bed
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -236,9 +255,7 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
                                 <TableRow key={bed.id}>
                                     <TableCell className="font-medium">{bed.bedId}</TableCell>
                                     <TableCell>{bed.type}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={statusVariant[bed.status]}>{bed.status}</Badge>
-                                    </TableCell>
+                                    <TableCell><Badge variant={statusVariant[bed.status]}>{bed.status}</Badge></TableCell>
                                     <TableCell className="text-muted-foreground">{bed.notes || '-'}</TableCell>
                                     <TableCell className="text-right">
                                         <DropdownMenu>
@@ -249,14 +266,8 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => openForm(bed)}>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                 <DropdownMenuItem onClick={() => setBedToDelete(bed)} className="text-red-600 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-900/40">
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Delete
-                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => openForm(bed)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                                 <DropdownMenuItem onClick={() => setBedToDelete(bed)} className="text-red-600 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-900/40"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -273,20 +284,11 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
                 </CardContent>
             </Card>
 
-            {/* Add/Edit Bed Dialog */}
-            <Dialog open={isFormOpen} onOpenChange={(isOpen) => {
-                if (!isOpen) {
-                    form.reset();
-                    setEditingBed(null);
-                }
-                setIsFormOpen(isOpen);
-            }}>
+            <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { form.reset(); setEditingBed(null); } setIsFormOpen(isOpen); }}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>{editingBed ? "Edit Bed" : "Add a New Bed"}</DialogTitle>
-                        <DialogDescription>
-                            Fill in the details for the bed. Click save when you're done.
-                        </DialogDescription>
+                        <DialogDescription>Fill in the details for the bed. Click save when you're done.</DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
@@ -301,12 +303,8 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
                                 <FormItem>
                                     <FormLabel>Bed Type</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger><SelectValue placeholder="Select a bed type" /></SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {bedTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                                        </SelectContent>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a bed type" /></SelectTrigger></FormControl>
+                                        <SelectContent>{bedTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
                                     </Select>
                                     <FormMessage />
                                 </FormItem>
@@ -315,9 +313,7 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
                                 <FormItem>
                                     <FormLabel>Status</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger>
-                                        </FormControl>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             <SelectItem value="Available">Available</SelectItem>
                                             <SelectItem value="Occupied">Occupied</SelectItem>
@@ -337,33 +333,60 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
                             )} />
                              <DialogFooter>
                                  <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancel</Button>
-                                <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    {editingBed ? "Save Changes" : "Create Bed"}
-                                </Button>
+                                <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editingBed ? "Save Changes" : "Create Bed"}</Button>
                             </DialogFooter>
                         </form>
                     </Form>
                 </DialogContent>
             </Dialog>
 
-             {/* Delete Confirmation Dialog */}
-            <AlertDialog open={!!bedToDelete} onOpenChange={(isOpen) => !isOpen && setBedToDelete(null)}>
+             <AlertDialog open={!!bedToDelete} onOpenChange={(isOpen) => !isOpen && setBedToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the bed <span className="font-bold">{bedToDelete?.bedId}</span> and update your hospital's total bed count.
-                    </AlertDialogDescription>
+                    <AlertDialogDescription>This action cannot be undone. This will permanently delete bed <span className="font-bold">{bedToDelete?.bedId}</span> and update your hospital's bed counts.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteBed} className="bg-destructive hover:bg-destructive/90">
-                        Delete
-                    </AlertDialogAction>
+                    <AlertDialogAction onClick={handleDeleteBed} disabled={isSubmitting} className="bg-destructive hover:bg-destructive/90">{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            
+            <Dialog open={isBulkAddOpen} onOpenChange={setIsBulkAddOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Bulk Add Beds to {department.name}</DialogTitle>
+                        <DialogDescription>
+                            Specify how many beds you want to add. They will be automatically numbered based on existing beds.
+                        </DialogDescription>
+                    </DialogHeader>
+                     <Form {...bulkAddForm}>
+                        <form onSubmit={bulkAddForm.handleSubmit(handleBulkAddSubmit)} className="space-y-4 py-4">
+                            <FormField
+                                control={bulkAddForm.control}
+                                name="numberOfBeds"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Number of New Beds</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" placeholder="e.g., 10" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => setIsBulkAddOpen(false)}>Cancel</Button>
+                                <Button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Add Beds
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

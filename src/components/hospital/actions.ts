@@ -1,9 +1,10 @@
+
 "use server";
 
 import { forecastBedDemand, ForecastBedDemandInput } from "@/ai/flows/forecast-bed-demand";
 import { db } from "@/lib/firebase/firebase";
-import { Department, defaultDepartments } from "@/types";
-import { collection, doc, writeBatch, increment } from "firebase/firestore";
+import { defaultDepartments } from "@/types";
+import { collection, doc, writeBatch, increment, query, orderBy, limit, getDocs } from "firebase/firestore";
 
 export async function forecastBedDemandServer(input: ForecastBedDemandInput) {
   try {
@@ -34,7 +35,6 @@ export async function addDepartmentWithBeds({ hospitalId, departmentName, number
             throw new Error("Department details not found.");
         }
 
-        // 1. Create department document
         const departmentRef = doc(collection(db, "hospitals", hospitalId, "departments"));
         batch.set(departmentRef, {
             name: departmentData.name,
@@ -43,7 +43,6 @@ export async function addDepartmentWithBeds({ hospitalId, departmentName, number
             hospitalId: hospitalId,
         });
 
-        // 2. Create bed documents
         const bedsRef = collection(db, "hospitals", hospitalId, "departments", departmentRef.id, "beds");
         const bedPrefix = departmentData.name.replace(/[^A-Z]/gi, '').substring(0, 3).toUpperCase();
         
@@ -60,11 +59,9 @@ export async function addDepartmentWithBeds({ hospitalId, departmentName, number
             });
         }
         
-        // 3. Update hospital's total bed count
         const hospitalRef = doc(db, "hospitals", hospitalId);
         batch.update(hospitalRef, { totalBeds: increment(numberOfBeds) });
 
-        // 4. Commit batch
         await batch.commit();
 
         return { success: true, message: `${departmentName} with ${numberOfBeds} beds added successfully.` };
@@ -72,5 +69,63 @@ export async function addDepartmentWithBeds({ hospitalId, departmentName, number
     } catch (error: any) {
         console.error("Error in addDepartmentWithBeds action:", error);
         throw new Error(error.message || "Failed to add department and beds.");
+    }
+}
+
+
+interface AddMultipleBedsInput {
+    hospitalId: string;
+    departmentId: string;
+    departmentName: string;
+    defaultBedType: string;
+    numberOfBeds: number;
+}
+
+export async function addMultipleBeds({ hospitalId, departmentId, departmentName, defaultBedType, numberOfBeds }: AddMultipleBedsInput) {
+     if (!hospitalId || !departmentId || !departmentName || numberOfBeds <= 0) {
+        throw new Error("Invalid input for adding multiple beds.");
+    }
+
+    try {
+        const batch = writeBatch(db);
+        const bedsRef = collection(db, "hospitals", hospitalId, "departments", departmentId, "beds");
+        
+        // Find the last bed number to continue sequencing
+        const lastBedQuery = query(bedsRef, orderBy("bedId", "desc"), limit(1));
+        const lastBedSnapshot = await getDocs(lastBedQuery);
+        let lastBedNumber = 0;
+        if (!lastBedSnapshot.empty) {
+            const lastBedId = lastBedSnapshot.docs[0].data().bedId as string;
+            const match = lastBedId.match(/-(\d+)$/);
+            if (match) {
+                lastBedNumber = parseInt(match[1], 10);
+            }
+        }
+        
+        const bedPrefix = departmentName.replace(/[^A-Z]/gi, '').substring(0, 3).toUpperCase();
+
+        for (let i = 1; i <= numberOfBeds; i++) {
+            const newBedNumber = (lastBedNumber + i).toString().padStart(2, '0');
+            const bedDocRef = doc(bedsRef);
+            batch.set(bedDocRef, {
+                bedId: `${bedPrefix}-${newBedNumber}`,
+                type: defaultBedType,
+                status: 'Available',
+                departmentId: departmentId,
+                hospitalId: hospitalId,
+                notes: 'Bulk generated bed'
+            });
+        }
+
+        const hospitalRef = doc(db, "hospitals", hospitalId);
+        batch.update(hospitalRef, { totalBeds: increment(numberOfBeds) });
+
+        await batch.commit();
+        
+        return { success: true, message: `${numberOfBeds} beds added to ${departmentName} successfully.` };
+
+    } catch (error: any) {
+        console.error("Error in addMultipleBeds action:", error);
+        throw new Error(error.message || "Failed to add beds in bulk.");
     }
 }

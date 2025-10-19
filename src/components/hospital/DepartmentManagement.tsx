@@ -10,7 +10,7 @@ import { db } from "@/lib/firebase/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Skeleton } from "../ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { Loader2, Terminal, PlusCircle, Building, ChevronRight, CheckCircle } from "lucide-react";
+import { Loader2, Terminal, PlusCircle, Building, ChevronRight, CheckCircle, Settings } from "lucide-react";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
@@ -23,7 +23,7 @@ import { addDepartmentWithBeds } from "./actions";
 
 const addDepartmentFormSchema = z.object({
   departmentName: z.string(),
-  numberOfBeds: z.number().min(1, "At least one bed is required.").max(100, "You can add a maximum of 100 beds at a time."),
+  numberOfBeds: z.coerce.number().min(1, "At least one bed is required.").max(100, "You can add a maximum of 100 beds at a time."),
 });
 
 export function DepartmentManagement() {
@@ -49,7 +49,7 @@ export function DepartmentManagement() {
         const departmentsRef = collection(db, "hospitals", userProfile.uid, "departments");
         const unsubscribe = onSnapshot(departmentsRef, (snapshot) => {
             const deptsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Department));
-            setDepartments(deptsData);
+            setDepartments(deptsData.sort((a, b) => a.name.localeCompare(b.name)));
             setLoading(false);
         }, (error) => {
             console.error("Error fetching departments:", error);
@@ -109,24 +109,27 @@ export function DepartmentManagement() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Your Departments</CardTitle>
-                        <CardDescription>A list of all departments currently in your hospital. Click one to manage its beds.</CardDescription>
+                        <CardDescription>A list of all departments in your hospital. Click to manage beds.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
                             {departments.length > 0 ? (
                                 departments.map(dept => (
-                                    <Link key={dept.id} href={`/hospital/departments/${dept.id}`}>
-                                        <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted transition-colors cursor-pointer">
-                                            <div className="flex items-center gap-4">
-                                                <Building className="w-6 h-6 text-primary" />
-                                                <div>
-                                                    <p className="font-semibold">{dept.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{dept.description}</p>
-                                                </div>
+                                    <div key={dept.id} className="flex items-center justify-between p-4 rounded-lg border">
+                                        <div className="flex items-center gap-4">
+                                            <Building className="w-6 h-6 text-primary" />
+                                            <div>
+                                                <p className="font-semibold">{dept.name}</p>
+                                                <p className="text-sm text-muted-foreground">{dept.description}</p>
                                             </div>
-                                            <ChevronRight className="w-5 h-5 text-muted-foreground" />
                                         </div>
-                                    </Link>
+                                        <Button asChild variant="outline" size="sm">
+                                            <Link href={`/hospital/departments/${dept.id}`}>
+                                                <Settings className="mr-2 h-4 w-4" />
+                                                Manage Beds
+                                            </Link>
+                                        </Button>
+                                    </div>
                                 ))
                             ) : (
                                 <div className="text-center py-12 text-muted-foreground">
@@ -168,7 +171,6 @@ export function DepartmentManagement() {
                 </Card>
             </div>
 
-            {/* Add Department Dialog */}
              <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) setSelectedDept(null); setIsFormOpen(isOpen); }}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
@@ -184,16 +186,14 @@ export function DepartmentManagement() {
                                 name="numberOfBeds"
                                 render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Number of Beds</FormLabel>
+                                    <FormLabel>Number of Beds to Create</FormLabel>
                                     <FormControl>
                                         <Input 
                                             type="number" 
                                             placeholder="e.g., 20" 
                                             {...field}
-                                            onChange={e => {
-                                                const value = e.target.value;
-                                                field.onChange(value === '' ? undefined : parseInt(value, 10));
-                                            }}
+                                            onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)}
+                                            value={field.value ?? ''}
                                         />
                                     </FormControl>
                                     <FormMessage />
