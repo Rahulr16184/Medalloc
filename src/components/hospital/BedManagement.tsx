@@ -253,11 +253,11 @@ export function BedManagement() {
                              <div className="grid grid-cols-2 gap-4">
                                 <FormItem>
                                     <FormLabel>Bed ID</FormLabel>
-                                    <Input value={editingBed?.bedId} disabled />
+                                    <Input value={editingBed?.bedId || ''} disabled />
                                 </FormItem>
                                 <FormItem>
                                     <FormLabel>Bed Type</FormLabel>
-                                    <Input value={editingBed?.type} disabled />
+                                    <Input value={editingBed?.type || ''} disabled />
                                 </FormItem>
                             </div>
                              <FormField control={form.control} name="status" render={({ field }) => (
