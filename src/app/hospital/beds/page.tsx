@@ -5,9 +5,9 @@ export default function BedManagementPage() {
   return (
     <div className="space-y-6">
        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Bed Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Overall Bed Status</h1>
           <p className="text-muted-foreground max-w-2xl">
-              Update your hospital's total and occupied bed counts in real-time.
+              Get a real-time visual overview of bed status across all your departments. Click a bed to quickly update its status.
           </p>
       </div>
       <BedManagement />
