@@ -25,41 +25,37 @@ export default function HospitalDashboardPage() {
         )
     }
 
-    if(hospital.status === 'pending') {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Approval Pending</CardTitle>
-                    <CardDescription>Your hospital registration is currently under review by our administrators.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p>You will receive a notification once your registration is approved. Until then, dashboard features will be limited.</p>
-                    <p className="mt-4 text-sm text-muted-foreground">Thank you for your patience.</p>
-                </CardContent>
-            </Card>
-        )
-    }
+    return (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-semibold">Welcome to your Hospital Dashboard</h2>
+            <p className="text-muted-foreground">
+                Manage your bed availability and forecast future demand.
+            </p>
 
-    if(hospital.status === 'rejected') {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Registration Rejected</CardTitle>
-                    <CardDescription>Unfortunately, your hospital registration could not be approved at this time.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p>If you believe this is an error, please contact support.</p>
-                </CardContent>
-            </Card>
-        )
-    }
+            {hospital.status === 'pending' && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Approval Pending</CardTitle>
+                        <CardDescription>Your hospital registration is currently under review by our administrators.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p>You will be able to be seen by patients once your registration is approved. You can still set up your departments and beds in the meantime.</p>
+                        <p className="mt-4 text-sm text-muted-foreground">Thank you for your patience.</p>
+                    </CardContent>
+                </Card>
+            )}
 
-  return (
-    <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">Welcome to your Hospital Dashboard</h2>
-        <p className="text-muted-foreground">
-            Manage your bed availability and forecast future demand.
-        </p>
-    </div>
-  );
+            {hospital.status === 'rejected' && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Registration Rejected</CardTitle>
+                        <CardDescription>Unfortunately, your hospital registration could not be approved at this time.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p>If you believe this is an error, please contact support.</p>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+    );
 }
