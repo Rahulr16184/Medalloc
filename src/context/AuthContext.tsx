@@ -42,14 +42,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!auth) return;
 
     const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
-      setLoading(true);
+      setLoading(true); // Always start loading on auth state change
       if (currentUser && currentUser.emailVerified) {
         setUser(currentUser);
       } else {
         setUser(null);
         setUserProfile(null);
         setHospital(null);
-        setLoading(false);
+        setLoading(false); // Done loading if no user
       }
     });
 
@@ -58,8 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) {
-      if (!loading) setLoading(false);
-      return;
+      return; // Stop if there's no user
     }
 
     const profileUnsubscribe = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
@@ -68,10 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserProfile(profile);
 
         // If user is not a hospital, we are done loading their profile.
+        // We can set loading to false.
         if (profile.role !== 'hospital') {
           setHospital(null);
           setLoading(false);
         }
+        // If it IS a hospital, we DON'T set loading to false yet.
+        // The next useEffect will handle that.
       } else {
         // No profile found, treat as logged out for data purposes
         setUserProfile(null);
@@ -86,9 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => profileUnsubscribe();
-  }, [user, loading]);
+  }, [user]);
 
   useEffect(() => {
+    // This effect only runs for hospital users AFTER their profile has been loaded.
     if (userProfile?.role !== 'hospital' || !user) {
       return;
     }
@@ -99,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setHospital(null);
       }
-      // This is the final loading step for a hospital user
+      // This is the final loading step for a hospital user, so now we can stop loading.
       setLoading(false);
     }, (error) => {
        console.error("Error fetching hospital data:", error);
@@ -120,7 +123,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (userProfile?.role) { // User is logged in and profile is loaded
       const destination = roleBasedRedirects[userProfile.role];
-      if ((isAuthPage || isPublicPage) && destination) {
+      
+      // If user is on an auth page (login/signup) or the public landing page, redirect them.
+      if (isAuthPage || pathname === '/') {
         router.push(destination);
       }
     } else { // User is not logged in
@@ -138,7 +143,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const isPublicOrAuthPage = publicRoutes.includes(pathname) || authRoutes.includes(pathname);
-
+  
+  // Show a full-page skeleton ONLY on protected routes while loading.
+  // This prevents the skeleton from flashing on public/auth pages.
   if (loading && !isPublicOrAuthPage) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center">
