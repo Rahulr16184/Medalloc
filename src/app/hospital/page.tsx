@@ -4,39 +4,10 @@ import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
-import { useEffect, useState } from "react";
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase/firebase";
-import { Hospital } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HospitalDashboardPage() {
-    const { userProfile } = useAuth();
-    const [hospital, setHospital] = useState<Hospital | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (!userProfile?.uid) {
-            setLoading(false);
-            return;
-        };
-
-        const hospitalRef = doc(db, "hospitals", userProfile.uid);
-        const unsubscribe = onSnapshot(hospitalRef, (doc) => {
-            if (doc.exists()) {
-                setHospital(doc.data() as Hospital);
-            } else {
-                setHospital(null);
-            }
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching hospital data:", error);
-            setHospital(null);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [userProfile]);
+    const { hospital, loading } = useAuth();
     
     if (loading) {
         return <Skeleton className="h-64 w-full" />
@@ -92,4 +63,3 @@ export default function HospitalDashboardPage() {
     </div>
   );
 }
-
