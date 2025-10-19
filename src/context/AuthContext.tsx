@@ -8,7 +8,6 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/firebase';
 import type { UserProfile, UserRole } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MainHeader } from '@/components/headers/MainHeader';
 
 interface AuthContextType {
   user: User | null;
@@ -32,16 +31,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialAuthCheck, setInitialAuthCheck] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (!currentUser) {
+      setLoading(true);
+      if (currentUser && currentUser.emailVerified) {
+        setUser(currentUser);
+      } else {
+        setUser(null);
         setUserProfile(null);
-        setInitialAuthCheck(false);
         setLoading(false);
       }
     });
@@ -49,81 +49,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      return;
-    }
-    
-    if (!user.emailVerified) {
-        firebaseSignOut(auth);
-        setUserProfile(null);
-        setInitialAuthCheck(false);
-        setLoading(false);
-        return;
-    }
-
-    const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), 
-      (doc) => {
-        if (doc.exists()) {
-          setUserProfile(doc.data() as UserProfile);
-        } else {
-          setUserProfile(null);
+    if (user) {
+      const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), 
+        (doc) => {
+          if (doc.exists()) {
+            setUserProfile(doc.data() as UserProfile);
+          } else {
+            // This case can happen if the user doc is not created yet or deleted.
+            // Logging them out is a safe fallback.
+            firebaseSignOut(auth);
+          }
+          setLoading(false);
+        }, 
+        (error) => {
+          console.error("Error fetching user profile:", error);
+          // Also log out on error to prevent being stuck.
+          firebaseSignOut(auth);
+          setLoading(false);
         }
-        setInitialAuthCheck(false);
-        setLoading(false);
-      }, 
-      (error) => {
-        console.error("Error fetching user profile:", error);
-        setUserProfile(null);
-        setInitialAuthCheck(false);
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribeProfile();
+      );
+      return () => unsubscribeProfile();
+    }
   }, [user]);
 
   useEffect(() => {
-    if (initialAuthCheck) {
-      return;
+    if (loading) {
+      return; // Wait until loading is false before checking routes
     }
 
     const isPublicPage = publicRoutes.some(route => pathname === route || (route === '/' && pathname.startsWith('/#')));
     const isAuthPage = authRoutes.includes(pathname);
 
-    if (userProfile) { // User is logged in
+    if (userProfile) { // User is logged in and has a profile
       const expectedRoute = roleBasedRedirects[userProfile.role];
+      // If user is on an auth page (login/signup) or the landing page, redirect them.
       if (isAuthPage || pathname === '/') {
         router.push(expectedRoute);
       }
     } else { // User is not logged in
+      // If the user is on a protected page, redirect to login.
       if (!isPublicPage) {
         router.push('/login');
       }
     }
-  }, [userProfile, initialAuthCheck, pathname, router]);
+  }, [userProfile, loading, pathname, router]);
 
   const logout = async () => {
     await firebaseSignOut(auth);
-    setUserProfile(null);
-    router.push('/login');
+    // User state will be cleared by onAuthStateChanged, triggering re-route.
   };
 
-  const isPublicPage = publicRoutes.some(route => pathname === route || (route === '/' && pathname.startsWith('/#')));
-
-  if (initialAuthCheck) {
+  if (loading) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center">
         <Skeleton className="h-full w-full" />
       </div>
     );
-  }
-  
-  if (!userProfile && !isPublicPage) {
-    return (
-        <div className="flex h-screen w-screen flex-col items-center justify-center">
-          <Skeleton className="h-full w-full" />
-        </div>
-      );
   }
 
   return (
