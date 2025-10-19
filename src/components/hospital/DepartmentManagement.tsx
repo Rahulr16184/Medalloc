@@ -190,7 +190,10 @@ export function DepartmentManagement() {
                                             type="number" 
                                             placeholder="e.g., 20" 
                                             {...field}
-                                            onChange={e => field.onChange(parseInt(e.target.value, 10))}
+                                            onChange={e => {
+                                                const value = e.target.value;
+                                                field.onChange(value === '' ? undefined : parseInt(value, 10));
+                                            }}
                                         />
                                     </FormControl>
                                     <FormMessage />
