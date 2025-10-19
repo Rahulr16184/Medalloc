@@ -3,11 +3,12 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { onAuthStateChanged, User, signOut as firebaseSignOut } from 'firebase/auth';
+import { User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase/firebase';
+import { db } from '@/lib/firebase/firebase';
 import type { UserProfile, UserRole, Hospital } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFirebase } from '@/firebase/provider';
 
 interface AuthContextType {
   user: User | null;
@@ -29,6 +30,7 @@ const roleBasedRedirects: Record<UserRole, string> = {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { auth, signOut } = useFirebase();
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [hospital, setHospital] = useState<Hospital | null>(null);
@@ -37,19 +39,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+    if (!auth) return;
+
+    const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
       if (!currentUser || !currentUser.emailVerified) {
         setUserProfile(null);
         setHospital(null);
-        setLoading(false);
+        setLoading(false); // No user or not verified, stop loading
       }
     });
     return () => unsubscribeAuth();
-  }, []);
+  }, [auth]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+        // If user logs out, reset states
+        if (userProfile) setUserProfile(null);
+        if (hospital) setHospital(null);
+        // If there was a user before, now there is none, so stop loading
+        if (!loading) setLoading(true); // prepare for potential new login
+        return;
+    };
+    
+    // Only fetch profile if user is email-verified
+    if (!user.emailVerified) {
+        setLoading(false);
+        return;
+    }
 
     const profileUnsubscribe = onSnapshot(
       doc(db, 'users', user.uid),
@@ -59,23 +76,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUserProfile(profile);
 
           if (profile.role === 'hospital') {
+            // If user is a hospital, we need to fetch hospital data before we are "done" loading.
             const hospitalUnsubscribe = onSnapshot(
               doc(db, 'hospitals', user.uid),
               (hospitalDoc) => {
-                if (hospitalDoc.exists()) {
-                  setHospital(hospitalDoc.data() as Hospital);
-                } else {
-                  setHospital(null);
-                }
-                setLoading(false);
+                setHospital(hospitalDoc.exists() ? hospitalDoc.data() as Hospital : null);
+                setLoading(false); // Loading finished after getting hospital data
+              },
+              (error) => {
+                 console.error("Error fetching hospital data:", error);
+                 setHospital(null);
+                 setLoading(false);
               }
             );
             return () => hospitalUnsubscribe();
           } else {
+            // Not a hospital, no more data to fetch.
             setHospital(null);
             setLoading(false);
           }
         } else {
+          // User document doesn't exist.
           setUserProfile(null);
           setHospital(null);
           setLoading(false);
@@ -90,38 +111,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     return () => profileUnsubscribe();
-  }, [user]);
+  }, [user, user?.emailVerified]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading) return; // Wait for all auth and profile checks to complete
 
     const isAuthPage = authRoutes.includes(pathname);
     const isPublicPage = publicRoutes.some(route => pathname === route || (route === '/' && pathname.startsWith('/#')));
     
-    if (userProfile && user?.emailVerified) {
+    if (userProfile) { // User is logged in and profile is loaded
       const expectedRoute = roleBasedRedirects[userProfile.role];
-      const isHospitalPendingOrRejected = userProfile.role === 'hospital' && hospital && hospital.status !== 'approved';
       
-      // If user is on an auth page, or landing page, redirect them.
+      // If user is on an auth page, or landing page, redirect them to their dashboard.
       if (isAuthPage || pathname === '/') {
         router.push(expectedRoute);
       }
-      // If a pending hospital tries to access a sub-page, redirect them back to the main status page.
-      else if (isHospitalPendingOrRejected && pathname !== expectedRoute) {
-        router.push(expectedRoute);
-      }
-    } else {
-      // User is not logged in.
+    } else { // User is not logged in
       if (!isPublicPage) {
         router.push('/login');
       }
     }
-  }, [user, userProfile, hospital, loading, pathname, router]);
+  }, [userProfile, loading, pathname, router]);
 
   const logout = async () => {
-    await firebaseSignOut(auth);
-    // State will be cleared by onAuthStateChanged listener
-    router.push('/login');
+    if (signOut) {
+      await signOut();
+      setUser(null);
+      setUserProfile(null);
+      setHospital(null);
+      setLoading(true); // Reset loading state
+      router.push('/login');
+    }
   };
 
   const isPublicPage = publicRoutes.some(route => pathname === route || (route === '/' && pathname.startsWith('/#')));
