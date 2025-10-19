@@ -11,7 +11,7 @@ const navItems = [
     { href: "/hospital", label: "My Hospital", icon: <LayoutDashboard className="h-4 w-4" /> },
     { href: "/hospital/beds", label: "Bed Management", icon: <BedDouble className="h-4 w-4" /> },
     { href: "/hospital/departments", label: "Departments & Beds", icon: <Building className="h-4 w-4" /> },
-    { href: "/hospital/forecasting", label: "Demand Forecasting", icon: <BarChart3.5 className="h-4 w-4" /> },
+    { href: "/hospital/forecasting", label: "Demand Forecasting", icon: <BarChart3 className="h-4 w-4" /> },
 ];
 
 
