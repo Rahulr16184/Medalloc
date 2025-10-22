@@ -3,11 +3,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from "firebase/auth";
-import { auth } from "@/lib/firebase/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase/firebase";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,8 +29,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, User, Hospital, Server } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import type { UserProfile, UserRole } from "@/types";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -38,7 +42,9 @@ const formSchema = z.object({
 export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [showVerificationAlert, setShowVerificationAlert] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<UserRole>("patient");
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -100,25 +106,55 @@ export function LoginForm() {
     }
   };
 
+  const roleBasedRedirects: Record<UserRole, string> = {
+    hospital: '/hospital',
+    patient: '/patient',
+    server: '/server',
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     setShowVerificationAlert(false);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      
-      if (!userCredential.user.emailVerified) {
+      const user = userCredential.user;
+
+      if (!user.emailVerified) {
         setShowVerificationAlert(true);
-        // Do not sign out, so we can resend verification for the current user
-        // await auth.signOut();
+        setLoading(false);
+        return;
+      }
+      
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        const userProfile = userDoc.data() as UserProfile;
+
+        if(userProfile.role !== selectedRole) {
+            toast({
+                variant: "destructive",
+                title: "Role Mismatch",
+                description: `This account is registered as a ${userProfile.role}. Please select the correct role.`,
+            });
+            await auth.signOut();
+        } else {
+            toast({
+                title: "Login Successful",
+                description: `Redirecting to your ${selectedRole} dashboard...`,
+            });
+            router.push(roleBasedRedirects[selectedRole]);
+        }
       } else {
-         // If email is verified, AuthContext will handle redirection.
-         // No need to do anything here.
+        throw new Error("User profile not found in Firestore.");
       }
       
     } catch (error: any) {
       let description = "An unexpected error occurred. Please try again.";
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         description = "Invalid email or password. Please try again.";
+      } else if (error.message === "User profile not found in Firestore.") {
+        description = "Your user profile could not be found. Please contact support.";
       }
       toast({
         variant: "destructive",
@@ -132,13 +168,29 @@ export function LoginForm() {
 
   return (
     <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Welcome Back!</CardTitle>
-        <CardDescription>
-          Enter your credentials to access your account.
-        </CardDescription>
+      <CardHeader>
+        <CardTitle className="text-2xl text-center">Login to Your Account</CardTitle>
+        <CardDescription className="text-center">Select your role and enter your credentials.</CardDescription>
       </CardHeader>
       <CardContent>
+         <Tabs
+            value={selectedRole}
+            onValueChange={(value) => setSelectedRole(value as UserRole)}
+            className="w-full mb-6"
+          >
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="patient">
+                <User className="mr-2 h-4 w-4" /> Patient
+              </TabsTrigger>
+              <TabsTrigger value="hospital">
+                <Hospital className="mr-2 h-4 w-4" /> Hospital
+              </TabsTrigger>
+              <TabsTrigger value="server">
+                <Server className="mr-2 h-4 w-4" /> Admin
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
         {showVerificationAlert && (
           <Alert variant="destructive" className="mb-4">
             <AlertTitle>Email Not Verified</AlertTitle>
