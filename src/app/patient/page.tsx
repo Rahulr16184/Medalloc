@@ -5,10 +5,12 @@ import { useEffect, useState } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import type { Hospital } from "@/types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bed, BedDouble, Building } from "lucide-react";
+import { Bed, BedDouble, Building, Search } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function PatientDashboardPage() {
     const [hospitals, setHospitals] = useState<Hospital[]>([]);
@@ -20,7 +22,7 @@ export default function PatientDashboardPage() {
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const hospitalsData: Hospital[] = [];
             querySnapshot.forEach((doc) => {
-                hospitalsData.push({ ...doc.data() } as Hospital);
+                hospitalsData.push({ uid: doc.id, ...doc.data() } as Hospital);
             });
             setHospitals(hospitalsData);
             setLoading(false);
@@ -30,7 +32,9 @@ export default function PatientDashboardPage() {
     }, []);
 
     const filteredHospitals = hospitals.filter(hospital =>
-        hospital.name.toLowerCase().includes(searchTerm.toLowerCase())
+        hospital.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        hospital.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        hospital.district?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const availableBeds = (h: Hospital) => h.totalBeds - h.occupiedBeds;
@@ -44,29 +48,32 @@ export default function PatientDashboardPage() {
                 </p>
             </div>
 
-            <Input
-                placeholder="Search for a hospital..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-            />
+            <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Search by hospital name, city, or district..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                />
+            </div>
             
             {loading ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
+                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-56 rounded-lg" />)}
                 </div>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {filteredHospitals.map(hospital => (
-                        <Card key={hospital.uid}>
+                        <Card key={hospital.uid} className="flex flex-col">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <Building className="w-5 h-5 text-muted-foreground"/>
                                     {hospital.name}
                                 </CardTitle>
-                                <CardDescription>{hospital.adminEmail}</CardDescription>
+                                <CardDescription>{hospital.city}, {hospital.state}</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
+                            <CardContent className="space-y-4 flex-grow">
                                 <div className="flex items-center justify-between p-3 rounded-md bg-secondary">
                                     <div className="flex items-center gap-2">
                                         <Bed className="w-5 h-5 text-green-500" />
@@ -89,6 +96,14 @@ export default function PatientDashboardPage() {
                                     <span>{hospital.occupiedBeds}</span>
                                 </div>
                             </CardContent>
+                            <CardFooter>
+                                <Button asChild className="w-full">
+                                    <Link href={`/patient/hospitals/${hospital.uid}`}>
+                                        <BedDouble className="mr-2 h-4 w-4" />
+                                        View & Book Beds
+                                    </Link>
+                                </Button>
+                            </CardFooter>
                         </Card>
                     ))}
                 </div>
