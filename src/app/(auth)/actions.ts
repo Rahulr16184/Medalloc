@@ -8,6 +8,7 @@ import { collection, doc, writeBatch, increment } from "firebase/firestore";
 interface CreateUserInput {
     name: string;
     email: string;
+    password: string;
     role: UserRole;
     hospitalName?: string;
     address?: string;
@@ -17,11 +18,11 @@ interface CreateUserInput {
     district?: string;
 }
 
-export async function createUser(password: string, userData: CreateUserInput) {
+export async function createUser(userData: CreateUserInput) {
     try {
         const userRecord = await auth.createUser({
             email: userData.email,
-            password: password,
+            password: userData.password,
             displayName: userData.name,
             emailVerified: true, // Auto-verify for simplicity in this context
         });

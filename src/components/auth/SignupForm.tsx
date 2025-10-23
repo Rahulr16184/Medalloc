@@ -99,7 +99,7 @@ export function SignupForm() {
     setLoading(true);
     try {
         const { confirmPassword, ...userData } = values;
-        const result = await createUser(values.password, userData);
+        const result = await createUser(userData);
 
         toast({
             title: "Account Created",
