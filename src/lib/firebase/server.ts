@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp, cert, type App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { FIREBASE_CONFIG } from "./config";
 
 let app: App;
 
@@ -23,6 +24,9 @@ function getAdminApp(): App {
 
     const app = initializeApp({
         credential: serviceAccount ? cert(serviceAccount) : undefined,
+        // Fallback to the client-side project ID if no service account is found.
+        // This is crucial for environments where auto-discovery of credentials might not work.
+        projectId: FIREBASE_CONFIG.projectId,
     });
     
     return app;
