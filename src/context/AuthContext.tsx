@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [userProfile, user]);
 
   useEffect(() => {
-    if (loading) return; // Do not run routing logic while loading
+    if (loading || !auth) return; // Do not run routing logic while loading or if auth is not ready
 
     const isAuthPage = authRoutes.includes(pathname);
     const isPublicPage = publicRoutes.includes(pathname);
@@ -133,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/login');
       }
     }
-  }, [loading, userProfile, pathname, router]);
+  }, [loading, userProfile, pathname, router, auth]);
 
   const logout = async () => {
     if (signOut) {
