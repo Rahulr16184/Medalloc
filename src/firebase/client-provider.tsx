@@ -1,14 +1,13 @@
 
 'use client';
 
-import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { Auth, getAuth, signOut } from 'firebase/auth';
-import { Firestore, getFirestore } from 'firebase/firestore';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signOut } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 import { useMemo, type ReactNode } from 'react';
 
 import { FIREBASE_CONFIG } from '@/lib/firebase/config';
 import { FirebaseProvider } from './provider';
-import { AuthProvider } from '@/context/AuthContext';
 
 
 /**
@@ -27,9 +26,7 @@ export function FirebaseClientProvider({ children }: { children: ReactNode }) {
 
   return (
     <FirebaseProvider app={app} auth={auth} firestore={firestore} signOut={handleSignOut}>
-       <AuthProvider>
-        {children}
-      </AuthProvider>
+      {children}
     </FirebaseProvider>
   );
 }
