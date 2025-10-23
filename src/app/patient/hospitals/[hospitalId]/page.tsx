@@ -29,7 +29,7 @@ export default function HospitalDetailsPage({ params }: { params: { hospitalId: 
     const [departments, setDepartments] = useState<DepartmentWithBeds[]>([]);
     const [loading, setLoading] = useState(true);
     const [bedToBook, setBedToBook] = useState<Bed | null>(null);
-    const [isBooking, setIsBooking]_useState(false);
+    const [isBooking, setIsBooking] = useState(false);
 
 
     useEffect(() => {
@@ -222,3 +222,5 @@ export default function HospitalDetailsPage({ params }: { params: { hospitalId: 
         </div>
     );
 }
+
+    
