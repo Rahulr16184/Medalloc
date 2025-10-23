@@ -7,9 +7,6 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
-import { collection, doc, setDoc, addDoc, writeBatch } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -22,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import indianStates from "@/lib/india-states-districts.json";
 import { defaultDepartments } from "@/types";
+import { createUser } from "@/app/(auth)/actions";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -100,103 +98,23 @@ export function SignupForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
+        const { confirmPassword, ...userData } = values;
+        const result = await createUser(values.password, userData);
 
-      await sendEmailVerification(user);
+        toast({
+            title: "Account Created",
+            description: result.message,
+        });
 
-      const batch = writeBatch(db);
-
-      // Create user profile in Firestore
-      const userProfile = {
-        uid: user.uid,
-        name: values.name,
-        email: values.email,
-        role: values.role as UserRole,
-      };
-      const userDocRef = doc(db, "users", user.uid);
-      batch.set(userDocRef, userProfile);
-
-      // If hospital, create hospital document and default departments/beds
-      if (values.role === 'hospital') {
-        const hospitalData = {
-          uid: user.uid,
-          name: values.hospitalName,
-          adminName: values.name,
-          adminEmail: values.email,
-          status: 'pending',
-          totalBeds: 0,
-          occupiedBeds: 0,
-          address: values.address,
-          city: values.city,
-          state: values.state,
-          postalCode: values.postalCode,
-          district: values.district,
-        };
-        const hospitalDocRef = doc(db, "hospitals", user.uid);
-        batch.set(hospitalDocRef, hospitalData);
-        
-        let initialTotalBeds = 0;
-
-        // Create default departments and beds
-        for (const dept of defaultDepartments) {
-          const departmentsRef = collection(db, "hospitals", user.uid, "departments");
-          const deptDocRef = doc(departmentsRef); // generate new doc ref
-          batch.set(deptDocRef, {
-            name: dept.name,
-            description: dept.description,
-            defaultBedType: dept.defaultBedType,
-            hospitalId: user.uid,
-          });
-
-          // Add a couple of default beds to each department
-          const bedsRef = collection(db, "hospitals", user.uid, "departments", deptDocRef.id, "beds");
-          const bedPrefix = dept.name.replace(/[^A-Z]/gi, '').substring(0, 3).toUpperCase();
-          
-          const bed1Ref = doc(bedsRef);
-          batch.set(bed1Ref, {
-            bedId: `${bedPrefix}-01`,
-            type: dept.defaultBedType,
-            status: 'Available',
-            departmentId: deptDocRef.id,
-            hospitalId: user.uid,
-            notes: 'Default bed'
-          });
-
-           const bed2Ref = doc(bedsRef);
-           batch.set(bed2Ref, {
-            bedId: `${bedPrefix}-02`,
-            type: dept.defaultBedType,
-            status: 'Available',
-            departmentId: deptDocRef.id,
-            hospitalId: user.uid,
-            notes: 'Default bed'
-          });
-          initialTotalBeds += 2;
-        }
-
-        batch.update(hospitalDocRef, { totalBeds: initialTotalBeds });
-      }
-      
-      await batch.commit();
-
-      toast({
-        title: "Verification Email Sent",
-        description: "Your account has been created. Please check your email to verify your account before logging in.",
-      });
-
-      router.push('/login');
-      
+        router.push('/login');
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Sign Up Failed",
-        description: error.code === 'auth/email-already-in-use' 
-            ? 'An account with this email already exists.' 
-            : (error.message || "An unexpected error occurred."),
-      });
+        toast({
+            variant: "destructive",
+            title: "Sign Up Failed",
+            description: error.message || "An unexpected error occurred.",
+        });
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   }
 
@@ -367,5 +285,3 @@ export function SignupForm() {
     </Card>
   );
 }
-
-    
