@@ -80,5 +80,3 @@ export async function createUser(userData: CreateUserInput) {
         throw new Error(error.message || "An unexpected error occurred during profile creation.");
     }
 }
-
-    

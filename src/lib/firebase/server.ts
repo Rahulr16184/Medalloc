@@ -6,11 +6,7 @@ import { FIREBASE_CONFIG } from "./config";
 
 let app: App;
 
-function getAdminApp(): App {
-    if (getApps().length > 0) {
-        return getApp();
-    }
-
+if (getApps().length === 0) {
     let serviceAccount;
     try {
         if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
@@ -30,15 +26,12 @@ function getAdminApp(): App {
     }
     
     app = initializeApp(options);
-    
-    return app;
+} else {
+    app = getApp();
 }
 
-// Initialize the app right away to be used by other server modules
-app = getAdminApp();
+
 const auth = getAuth(app);
 const db = getFirestore(app);
 
 export { app, auth, db };
-
-    
