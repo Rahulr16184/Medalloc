@@ -1,20 +1,9 @@
 
 "use server";
 
-import { forecastBedDemand, ForecastBedDemandInput } from "@/ai/flows/forecast-bed-demand";
 import { db } from "@/lib/firebase/firebase";
 import { defaultDepartments } from "@/types";
 import { collection, doc, writeBatch, increment, query, orderBy, limit, getDocs } from "firebase/firestore";
-
-export async function forecastBedDemandServer(input: ForecastBedDemandInput) {
-  try {
-    const result = await forecastBedDemand(input);
-    return result;
-  } catch (error) {
-    console.error("Error in forecastBedDemandServer action:", error);
-    throw new Error("Failed to generate forecast.");
-  }
-}
 
 interface AddDepartmentWithBedsInput {
     hospitalId: string;
