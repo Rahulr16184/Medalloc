@@ -20,6 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import indianStates from "@/lib/india-states-districts.json";
 import { defaultDepartments } from "@/types";
 import { createUser } from "@/app/(auth)/actions";
+import { useFirebase } from "@/firebase/provider";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -68,6 +70,7 @@ export function SignupForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { auth } = useFirebase();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -97,21 +100,39 @@ export function SignupForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
+    if (!auth) {
+        toast({ variant: "destructive", title: "Sign Up Failed", description: "Firebase not initialized." });
+        setLoading(false);
+        return;
+    }
     try {
-        const { confirmPassword, ...userData } = values;
-        const result = await createUser(userData);
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        
+        await sendEmailVerification(userCredential.user);
+
+        const { confirmPassword, password, ...userDataForDb } = values;
+        
+        const result = await createUser({
+            ...userDataForDb,
+            uid: userCredential.user.uid,
+            displayName: values.name
+        });
 
         toast({
-            title: "Account Created",
-            description: result.message,
+            title: "Account Created! Please Verify Your Email",
+            description: "A verification link has been sent to your email. Please check your inbox.",
         });
 
         router.push('/login');
     } catch (error: any) {
+        let description = "An unexpected error occurred.";
+        if (error.code === 'auth/email-already-in-use') {
+            description = "This email address is already in use. Please try another one.";
+        }
         toast({
             variant: "destructive",
             title: "Sign Up Failed",
-            description: error.message || "An unexpected error occurred.",
+            description: description,
         });
     } finally {
         setLoading(false);
@@ -285,3 +306,5 @@ export function SignupForm() {
     </Card>
   );
 }
+
+    
