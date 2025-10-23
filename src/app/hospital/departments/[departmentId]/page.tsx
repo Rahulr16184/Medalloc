@@ -3,7 +3,7 @@ import { BedsManagement } from "@/components/hospital/BedsManagement";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
-export default function Page({ params }: { params: { departmentId: string } }) {
+export default async function Page({ params }: { params: { departmentId: string } }) {
     return (
         <div className="space-y-6">
             <Link href="/hospital/departments" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
