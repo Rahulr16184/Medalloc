@@ -7,13 +7,18 @@ const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
   ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
   : undefined;
 
-// This function ensures we initialize the app only once, making it safe for serverless environments.
-const app = getApps().length
-  ? getApp()
-  : initializeApp({
-      credential: serviceAccount ? cert(serviceAccount) : undefined,
+// This function ensures that we initialize the app only once, making it safe for serverless environments.
+// It checks if an app is already initialized, and if not, it creates a new one.
+const getAdminApp = (): App => {
+    if (getApps().length > 0) {
+        return getApp();
+    }
+    return initializeApp({
+        credential: serviceAccount ? cert(serviceAccount) : undefined,
     });
+};
 
+const app = getAdminApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 
