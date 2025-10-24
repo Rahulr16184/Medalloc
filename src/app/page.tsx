@@ -256,12 +256,12 @@ export default function AuthPage() {
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Forgot Password</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Enter your email address and we'll send you a link to reset your password.
-                                            </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <Form {...forgotPasswordForm}>
                                             <form onSubmit={forgotPasswordForm.handleSubmit(onForgotPassword)} className="space-y-4">
+                                                <AlertDialogDescription>
+                                                    Enter your email address and we'll send you a link to reset your password.
+                                                </AlertDialogDescription>
                                                 <FormField
                                                     control={forgotPasswordForm.control}
                                                     name="email"
