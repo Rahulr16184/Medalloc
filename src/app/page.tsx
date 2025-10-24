@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2, Hospital } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { app } from "@/lib/firebase/firebase";
 import { UserRole } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -137,7 +137,6 @@ export default function AuthPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
         <div className="mb-8 flex flex-col items-center text-center">
-            <Hospital className="h-12 w-12 text-primary mb-4" />
             <h1 className="text-4xl font-bold">MEDALLOC</h1>
             <p className="text-muted-foreground">Intelligent Bed Management, Simplified.</p>
         </div>
@@ -233,3 +232,5 @@ export default function AuthPage() {
     </div>
   );
 }
+
+    
