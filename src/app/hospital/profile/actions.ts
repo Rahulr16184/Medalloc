@@ -5,19 +5,18 @@ import { db } from "@/lib/firebase/firebase";
 import { Hospital } from "@/types";
 import { doc, updateDoc } from "firebase/firestore";
 
-type UpdateHospitalProfileInput = Partial<Hospital> & {
-    uid: string;
-};
+// The input type no longer needs uid, as it will be passed separately for security.
+type UpdateHospitalProfileInput = Partial<Omit<Hospital, 'uid'>>;
 
-export async function updateHospitalProfile(data: UpdateHospitalProfileInput) {
-    if (!data.uid) {
-        throw new Error("Hospital ID is required.");
+export async function updateHospitalProfile(uid: string, data: UpdateHospitalProfileInput) {
+    if (!uid) {
+        throw new Error("A user ID is required to update the profile.");
     }
-    const hospitalRef = doc(db, "hospitals", data.uid);
+    const hospitalRef = doc(db, "hospitals", uid);
     
     try {
-        const { uid, ...updateData } = data;
-        await updateDoc(hospitalRef, updateData);
+        // Data is already what we want to update, no need to destructure uid from it.
+        await updateDoc(hospitalRef, data);
         return { success: true, message: "Profile updated successfully." };
     } catch (error: any) {
         console.error("Error updating hospital profile:", error);

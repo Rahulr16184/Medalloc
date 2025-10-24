@@ -6,8 +6,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { useFirebase } from "@/firebase/provider"; // Import the useFirebase hook
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,13 +16,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Terminal } from "lucide-react";
+
 
 import type { Hospital } from "@/types";
 import indianStates from "@/lib/india-states-districts.json";
 import { updateHospitalProfile } from "./actions";
-
-// Assume the logged-in hospital user's ID is this mock ID
-const MOCK_HOSPITAL_ID = "mock-hospital-id";
 
 const profileFormSchema = z.object({
   name: z.string().min(2, "Hospital name must be at least 2 characters."),
@@ -35,9 +35,12 @@ const profileFormSchema = z.object({
 
 export default function HospitalProfilePage() {
     const { toast } = useToast();
+    const { auth, firestore } = useFirebase(); // Use the hook to get auth and firestore
     const [hospital, setHospital] = useState<Hospital | null>(null);
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const user = auth?.currentUser;
     
     const form = useForm<z.infer<typeof profileFormSchema>>({
         resolver: zodResolver(profileFormSchema),
@@ -55,7 +58,17 @@ export default function HospitalProfilePage() {
     const districtsForState = indianStates.states.find(s => s.state === selectedState)?.districts || [];
 
     useEffect(() => {
-        const hospitalRef = doc(db, "hospitals", MOCK_HOSPITAL_ID);
+        if (!user || !firestore) {
+            // If user is not logged in or firebase is not ready, wait.
+            // We can add a check for auth loading state if available.
+             if (!auth) {
+                setLoading(false);
+                setError("Firebase not initialized. Please refresh the page.");
+             }
+            return;
+        };
+
+        const hospitalRef = doc(firestore, "hospitals", user.uid);
         const unsubscribe = onSnapshot(hospitalRef, (docSnap) => {
             if (docSnap.exists()) {
                 const data = { uid: docSnap.id, ...docSnap.data() } as Hospital;
@@ -68,21 +81,29 @@ export default function HospitalProfilePage() {
                     district: data.district || "",
                     postalCode: data.postalCode || "",
                 });
+                 setError(null);
             } else {
-                // Handle case where hospital doc doesn't exist
-                toast({ variant: "destructive", title: "Error", description: "Hospital profile not found." });
+                setError("Your hospital profile could not be found. This may happen if your account role was just changed. If so, please log out and log back in.");
             }
+            setLoading(false);
+        }, (err) => {
+            console.error("Error fetching hospital profile:", err);
+            setError("An error occurred while fetching your profile.");
             setLoading(false);
         });
 
         return () => unsubscribe();
-    }, [form, toast]);
+    }, [user, firestore, form, toast]);
 
 
     const onSubmit = async (values: z.infer<typeof profileFormSchema>) => {
+        if (!user) {
+            toast({ variant: "destructive", title: "Not Authenticated", description: "You must be logged in to update your profile." });
+            return;
+        }
         setIsSubmitting(true);
         try {
-            await updateHospitalProfile({ uid: MOCK_HOSPITAL_ID, ...values });
+            await updateHospitalProfile(user.uid, values);
             toast({
                 title: "Profile Updated",
                 description: "Your hospital details have been saved successfully.",
@@ -101,6 +122,19 @@ export default function HospitalProfilePage() {
     if (loading) {
         return <Skeleton className="h-96 w-full" />
     }
+
+     if (error) {
+         return (
+            <Alert variant="destructive">
+                <Terminal className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>
+                    {error}
+                </AlertDescription>
+            </Alert>
+        );
+    }
+
 
     return (
          <div className="space-y-6">
