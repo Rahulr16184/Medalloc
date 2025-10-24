@@ -1,7 +1,7 @@
 
 "use client";
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, query } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import type { Hospital } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -34,31 +34,13 @@ export default function ManageHospitalsPage() {
 
         return () => unsubscribe();
     }, [toast]);
-
-    const handleStatusChange = async (hospitalId: string, status: 'approved' | 'rejected') => {
-        const hospitalRef = doc(db, "hospitals", hospitalId);
-        try {
-            await updateDoc(hospitalRef, { status });
-            toast({
-                title: "Status Updated",
-                description: `Hospital status has been set to ${status}.`,
-            });
-        } catch (error) {
-            console.error("Error updating status:", error);
-            toast({
-                variant: "destructive",
-                title: "Update Failed",
-                description: "Could not update hospital status.",
-            });
-        }
-    };
     
     return (
         <div className="space-y-6">
             <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight">Manage Hospitals</h1>
                 <p className="text-muted-foreground">
-                    View, approve, or reject hospital registrations.
+                    View all registered hospital accounts.
                 </p>
             </div>
             {loading ? (
@@ -67,7 +49,7 @@ export default function ManageHospitalsPage() {
                     <Skeleton className="h-64 w-full" />
                 </div>
             ) : (
-                <HospitalsTable hospitals={hospitals} onStatusChange={handleStatusChange} />
+                <HospitalsTable hospitals={hospitals} />
             )}
         </div>
     );

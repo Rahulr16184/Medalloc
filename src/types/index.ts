@@ -13,7 +13,6 @@ export interface Hospital {
   name: string;
   adminName: string;
   adminEmail: string;
-  status: 'pending' | 'approved' | 'rejected';
   totalBeds: number;
   occupiedBeds: number;
   address?: string;

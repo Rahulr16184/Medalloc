@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import type { Hospital } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ export default function PatientDashboardPage() {
     const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
-        const q = query(collection(db, "hospitals"), where("status", "==", "approved"));
+        const q = query(collection(db, "hospitals"));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const hospitalsData: Hospital[] = [];
             querySnapshot.forEach((doc) => {

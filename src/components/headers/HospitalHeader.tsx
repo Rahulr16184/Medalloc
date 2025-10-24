@@ -3,12 +3,13 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, BarChart3, BedDouble, Building } from 'lucide-react';
+import { LayoutDashboard, BarChart3, BedDouble, Building, User } from 'lucide-react';
 import { ScrollArea, ScrollBar } from "../ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 const navItems = [
     { href: "/hospital", label: "My Hospital", icon: <LayoutDashboard className="h-4 w-4" /> },
+    { href: "/hospital/profile", label: "My Profile", icon: <User className="h-4 w-4" /> },
     { href: "/hospital/beds", label: "Bed Management", icon: <BedDouble className="h-4 w-4" /> },
     { href: "/hospital/departments", label: "Departments & Beds", icon: <Building className="h-4 w-4" /> },
 ];
