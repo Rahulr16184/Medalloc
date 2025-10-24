@@ -18,7 +18,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import indianStates from "@/lib/india-states-districts.json";
-import { defaultDepartments } from "@/types";
 import { createUser } from "@/app/(auth)/actions";
 import { useFirebase } from "@/firebase/provider";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
@@ -106,16 +105,19 @@ export function SignupForm() {
         return;
     }
     try {
+        // 1. Create user in Firebase Auth (client-side)
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        const user = userCredential.user;
         
-        await sendEmailVerification(userCredential.user);
+        // 2. Send verification email (client-side)
+        await sendEmailVerification(user);
 
+        // 3. Prepare data and call server action to create profile in Firestore
         const { confirmPassword, password, ...userDataForDb } = values;
         
-        const result = await createUser({
+        await createUser({
             ...userDataForDb,
-            uid: userCredential.user.uid,
-            displayName: values.name
+            uid: user.uid,
         });
 
         toast({
@@ -132,7 +134,7 @@ export function SignupForm() {
         toast({
             variant: "destructive",
             title: "Sign Up Failed",
-            description: description,
+            description: error.message || description,
         });
     } finally {
         setLoading(false);
@@ -306,5 +308,3 @@ export function SignupForm() {
     </Card>
   );
 }
-
-    

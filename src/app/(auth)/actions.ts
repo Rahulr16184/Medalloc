@@ -3,7 +3,7 @@
 
 import { db } from "@/lib/firebase/server";
 import { defaultDepartments, type UserProfile, type Hospital, type UserRole } from "@/types";
-import { collection, doc, writeBatch, increment } from "firebase/firestore";
+import { collection, doc, writeBatch } from "firebase/firestore";
 
 interface CreateUserInput {
     uid: string;
@@ -77,6 +77,7 @@ export async function createUser(userData: CreateUserInput) {
         return { success: true, message: "User profile and data created successfully." };
     } catch (error: any) {
         console.error("Error creating user profile in Firestore:", error);
+        // Re-throwing the error to be caught by the client
         throw new Error(error.message || "An unexpected error occurred during profile creation.");
     }
 }
