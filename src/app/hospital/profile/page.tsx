@@ -41,6 +41,14 @@ export default function HospitalProfilePage() {
     
     const form = useForm<z.infer<typeof profileFormSchema>>({
         resolver: zodResolver(profileFormSchema),
+        defaultValues: {
+            name: "",
+            address: "",
+            city: "",
+            state: "",
+            district: "",
+            postalCode: "",
+        }
     });
 
     const selectedState = form.watch("state");
@@ -206,4 +214,3 @@ export default function HospitalProfilePage() {
         </div>
     );
 }
-
