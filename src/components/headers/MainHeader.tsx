@@ -3,7 +3,6 @@
 
 import Link from "next/link"
 import { Hospital } from 'lucide-react';
-import { UserNav } from "../dashboard/UserNav";
 import { ModeToggle } from "../ModeToggle";
 
 export function MainHeader() {
@@ -15,7 +14,6 @@ export function MainHeader() {
             </Link>
             <div className="flex items-center gap-2">
                 <ModeToggle />
-                <UserNav />
             </div>
         </header>
     )

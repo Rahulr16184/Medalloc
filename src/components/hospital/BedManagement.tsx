@@ -1,7 +1,6 @@
 
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Department, Hospital, Bed, BedStatus, bedTypes } from "@/types";
 import { collection, onSnapshot, query, doc, updateDoc, writeBatch } from "firebase/firestore";
@@ -37,8 +36,8 @@ const bedFormSchema = z.object({
 
 
 export function BedManagement() {
-    const { userProfile } = useAuth();
     const { toast } = useToast();
+    const MOCK_HOSPITAL_ID = "mock-hospital-id"; // Mock hospital ID
 
     const [departments, setDepartments] = useState<DepartmentWithBeds[]>([]);
     const [loading, setLoading] = useState(true);
@@ -52,17 +51,12 @@ export function BedManagement() {
     });
 
     useEffect(() => {
-        if (!userProfile?.uid) {
-            setLoading(false);
-            return;
-        }
-
-        const hospitalRef = doc(db, "hospitals", userProfile.uid);
+        const hospitalRef = doc(db, "hospitals", MOCK_HOSPITAL_ID);
         const hospitalUnsubscribe = onSnapshot(hospitalRef, (doc) => {
-            setHospital(doc.exists() ? doc.data() as Hospital : null);
+            setHospital(doc.exists() ? { uid: doc.id, ...doc.data() } as Hospital : null);
         });
 
-        const departmentsRef = collection(db, "hospitals", userProfile.uid, "departments");
+        const departmentsRef = collection(db, "hospitals", MOCK_HOSPITAL_ID, "departments");
         const departmentsUnsubscribe = onSnapshot(departmentsRef, (snapshot) => {
             const deptsWithBeds: { [key: string]: DepartmentWithBeds } = {};
             
@@ -118,13 +112,13 @@ export function BedManagement() {
             hospitalUnsubscribe();
             departmentsUnsubscribe();
         };
-    }, [userProfile, toast]);
+    }, [toast]);
 
     const handleFormSubmit = async (values: z.infer<typeof bedFormSchema>) => {
-        if (!userProfile || !editingBed) return;
+        if (!editingBed) return;
         setIsSubmitting(true);
         try {
-            const bedRef = doc(db, "hospitals", userProfile.uid, "departments", editingBed.departmentId, "beds", editingBed.id);
+            const bedRef = doc(db, "hospitals", MOCK_HOSPITAL_ID, "departments", editingBed.departmentId, "beds", editingBed.id);
             await updateDoc(bedRef, { status: values.status, notes: values.notes });
             toast({ title: "Bed Status Updated", description: `Bed ${editingBed.bedId} is now ${values.status}.` });
             setEditingBed(null);
@@ -146,7 +140,7 @@ export function BedManagement() {
         });
     };
     
-    if (loading) {
+    if (loading && !hospital) {
         return (
              <div className="space-y-8">
                 <Skeleton className="h-40 rounded-lg" />
@@ -156,22 +150,20 @@ export function BedManagement() {
         );
     }
     
-    if (!hospital || hospital.status !== 'approved') {
+    // Create a mock hospital if it doesn't exist for demonstration
+    if (!hospital && !loading) {
          return (
             <Alert>
                 <Terminal className="h-4 w-4" />
-                <AlertTitle>Access Denied</AlertTitle>
+                <AlertTitle>No Hospital Data</AlertTitle>
                 <AlertDescription>
-                    {hospital?.status === 'pending' 
-                        ? "Your hospital registration is pending approval. This feature will be available once approved." 
-                        : "Bed management is only available for approved hospitals."
-                    }
+                    Could not find hospital data. Please add departments and beds to see management features.
                 </AlertDescription>
             </Alert>
         );
     }
     
-    const overallOccupancy = hospital.totalBeds > 0 ? (hospital.occupiedBeds / hospital.totalBeds) * 100 : 0;
+    const overallOccupancy = hospital ? (hospital.totalBeds > 0 ? (hospital.occupiedBeds / hospital.totalBeds) * 100 : 0) : 0;
 
     const statusStyles: Record<BedStatus, string> = {
         Available: "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-900",
@@ -189,7 +181,7 @@ export function BedManagement() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex justify-between items-baseline">
-                        <p className="text-2xl font-bold">{hospital.occupiedBeds} / {hospital.totalBeds} <span className="text-sm font-normal text-muted-foreground">Beds Occupied</span></p>
+                        <p className="text-2xl font-bold">{hospital?.occupiedBeds || 0} / {hospital?.totalBeds || 0} <span className="text-sm font-normal text-muted-foreground">Beds Occupied</span></p>
                         <p className="text-2xl font-bold">{Math.round(overallOccupancy)}% <span className="text-sm font-normal text-muted-foreground">Occupancy</span></p>
                     </div>
                     <Progress value={overallOccupancy} />
@@ -298,5 +290,3 @@ export function BedManagement() {
        </div>
     );
 }
-
-    

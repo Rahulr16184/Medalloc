@@ -1,7 +1,6 @@
 
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Bed, BedStatus, Department, bedTypes } from "@/types";
 import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, increment, query, getDocs, orderBy, limit } from "firebase/firestore";
@@ -41,8 +40,8 @@ interface BedsManagementProps {
 }
 
 export function BedsManagement({ departmentId }: BedsManagementProps) {
-    const { userProfile } = useAuth();
     const { toast } = useToast();
+    const MOCK_HOSPITAL_ID = "mock-hospital-id"; // Mock hospital ID
     const [department, setDepartment] = useState<Department | null>(null);
     const [beds, setBeds] = useState<Bed[]>([]);
     const [loading, setLoading] = useState(true);
@@ -63,12 +62,12 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
     });
 
     useEffect(() => {
-        if (!userProfile?.uid || !departmentId) {
+        if (!departmentId) {
             setLoading(false);
             return;
         }
 
-        const deptRef = doc(db, "hospitals", userProfile.uid, "departments", departmentId);
+        const deptRef = doc(db, "hospitals", MOCK_HOSPITAL_ID, "departments", departmentId);
         const deptUnsubscribe = onSnapshot(deptRef, (docSnap) => {
             if (docSnap.exists()) {
                 setDepartment({ id: docSnap.id, ...docSnap.data() } as Department);
@@ -78,7 +77,7 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
             }
         });
 
-        const bedsRef = collection(db, "hospitals", userProfile.uid, "departments", departmentId, "beds");
+        const bedsRef = collection(db, "hospitals", MOCK_HOSPITAL_ID, "departments", departmentId, "beds");
         const bedsUnsubscribe = onSnapshot(query(bedsRef, orderBy("bedId")), (snapshot) => {
             const bedsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bed));
             setBeds(bedsData);
@@ -93,20 +92,19 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
             deptUnsubscribe();
             bedsUnsubscribe();
         };
-    }, [userProfile, departmentId, toast]);
+    }, [departmentId, toast]);
     
     const handleFormSubmit = async (values: z.infer<typeof bedFormSchema>) => {
-        if (!userProfile) return;
         setIsSubmitting(true);
 
         const batch = writeBatch(db);
-        const hospitalRef = doc(db, "hospitals", userProfile.uid);
+        const hospitalRef = doc(db, "hospitals", MOCK_HOSPITAL_ID);
 
         try {
-            const bedData = { ...values, hospitalId: userProfile.uid, departmentId: departmentId, notes: values.notes || "" };
+            const bedData = { ...values, hospitalId: MOCK_HOSPITAL_ID, departmentId: departmentId, notes: values.notes || "" };
 
             if(editingBed) {
-                const bedRef = doc(db, "hospitals", userProfile.uid, "departments", departmentId, "beds", editingBed.id);
+                const bedRef = doc(db, "hospitals", MOCK_HOSPITAL_ID, "departments", departmentId, "beds", editingBed.id);
                 batch.update(bedRef, bedData);
 
                 if(editingBed.status !== values.status) {
@@ -120,7 +118,7 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
                 await batch.commit();
                 toast({ title: "Bed Updated", description: `Bed ${values.bedId} has been updated.` });
             } else {
-                const bedsRef = collection(db, "hospitals", userProfile.uid, "departments", departmentId, "beds");
+                const bedsRef = collection(db, "hospitals", MOCK_HOSPITAL_ID, "departments", departmentId, "beds");
                 const newBedRef = doc(bedsRef);
                 batch.set(newBedRef, bedData);
                 batch.update(hospitalRef, { totalBeds: increment(1) });
@@ -142,11 +140,11 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
     };
     
     const handleBulkAddSubmit = async (values: z.infer<typeof bulkAddSchema>) => {
-        if (!userProfile || !department) return;
+        if (!department) return;
         setIsSubmitting(true);
         try {
             const result = await addMultipleBeds({
-                hospitalId: userProfile.uid,
+                hospitalId: MOCK_HOSPITAL_ID,
                 departmentId: department.id,
                 departmentName: department.name,
                 defaultBedType: department.defaultBedType || 'General Ward',
@@ -163,11 +161,11 @@ export function BedsManagement({ departmentId }: BedsManagementProps) {
     };
 
     const handleDeleteBed = async () => {
-        if (!bedToDelete || !userProfile) return;
+        if (!bedToDelete) return;
         setIsSubmitting(true);
         const batch = writeBatch(db);
-        const bedRef = doc(db, "hospitals", userProfile.uid, "departments", departmentId, "beds", bedToDelete.id);
-        const hospitalRef = doc(db, "hospitals", userProfile.uid);
+        const bedRef = doc(db, "hospitals", MOCK_HOSPITAL_ID, "departments", departmentId, "beds", bedToDelete.id);
+        const hospitalRef = doc(db, "hospitals", MOCK_HOSPITAL_ID);
 
         try {
             batch.delete(bedRef);

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Hospital } from 'lucide-react';
+import { ModeToggle } from '../ModeToggle';
 
 export function LandingHeader() {
   return (
@@ -9,17 +10,13 @@ export function LandingHeader() {
         <Hospital className="h-6 w-6 text-primary" />
         <span className="ml-2 text-xl font-bold">MEDALLOC</span>
       </Link>
-      <nav className="ml-auto flex gap-4 sm:gap-6">
-        <Button asChild variant="ghost">
-          <Link href="/login" prefetch={false}>
-            Login
-          </Link>
-        </Button>
+      <nav className="ml-auto flex gap-4 sm:gap-6 items-center">
         <Button asChild>
-          <Link href="/signup" prefetch={false}>
-            Sign Up
+          <Link href="/hospital" prefetch={false}>
+            Dashboard
           </Link>
         </Button>
+        <ModeToggle />
       </nav>
     </header>
   );

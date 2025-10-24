@@ -4,7 +4,6 @@
 import { useEffect, useState } from "react";
 import { doc, getDoc, collection, onSnapshot, query, updateDoc, writeBatch, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
-import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import type { Hospital, Department, Bed, BedStatus } from "@/types";
 import Link from "next/link";
@@ -23,8 +22,8 @@ interface DepartmentWithBeds extends Department {
 }
 
 export default function HospitalDetailsPage({ params }: { params: { hospitalId: string } }) {
-    const { user } = useAuth();
     const { toast } = useToast();
+    const MOCK_PATIENT_ID = "mock-patient-id";
     const [hospital, setHospital] = useState<Hospital | null>(null);
     const [departments, setDepartments] = useState<DepartmentWithBeds[]>([]);
     const [loading, setLoading] = useState(true);
@@ -81,14 +80,14 @@ export default function HospitalDetailsPage({ params }: { params: { hospitalId: 
     }, [params.hospitalId]);
 
     const handleBookBed = async () => {
-        if (!user || !bedToBook) return;
+        if (!bedToBook) return;
         setIsBooking(true);
         try {
             await bookBed({
                 hospitalId: bedToBook.hospitalId,
                 departmentId: bedToBook.departmentId,
                 bedId: bedToBook.id,
-                patientId: user.uid,
+                patientId: MOCK_PATIENT_ID,
             });
             
             toast({
@@ -222,5 +221,3 @@ export default function HospitalDetailsPage({ params }: { params: { hospitalId: 
         </div>
     );
 }
-
-    

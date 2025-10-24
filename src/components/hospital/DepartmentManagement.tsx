@@ -1,7 +1,6 @@
 
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Department, defaultDepartments } from "@/types";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -27,8 +26,8 @@ const addDepartmentFormSchema = z.object({
 });
 
 export function DepartmentManagement() {
-    const { userProfile } = useAuth();
     const { toast } = useToast();
+    const MOCK_HOSPITAL_ID = "mock-hospital-id"; // Mock hospital ID
     const [departments, setDepartments] = useState<Department[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -41,12 +40,7 @@ export function DepartmentManagement() {
     });
 
     useEffect(() => {
-        if (!userProfile?.uid) {
-            setLoading(false);
-            return;
-        }
-
-        const departmentsRef = collection(db, "hospitals", userProfile.uid, "departments");
+        const departmentsRef = collection(db, "hospitals", MOCK_HOSPITAL_ID, "departments");
         const unsubscribe = onSnapshot(departmentsRef, (snapshot) => {
             const deptsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Department));
             setDepartments(deptsData.sort((a, b) => a.name.localeCompare(b.name)));
@@ -58,14 +52,14 @@ export function DepartmentManagement() {
         });
 
         return () => unsubscribe();
-    }, [userProfile, toast]);
+    }, [toast]);
 
     const handleFormSubmit = async (values: z.infer<typeof addDepartmentFormSchema>) => {
-        if (!userProfile || !selectedDept) return;
+        if (!selectedDept) return;
         setIsSubmitting(true);
         try {
             const result = await addDepartmentWithBeds({
-                hospitalId: userProfile.uid,
+                hospitalId: MOCK_HOSPITAL_ID,
                 departmentName: selectedDept,
                 numberOfBeds: values.numberOfBeds,
             });
@@ -91,16 +85,6 @@ export function DepartmentManagement() {
 
     if (loading) {
         return <Skeleton className="h-96 w-full" />;
-    }
-
-    if (!userProfile || userProfile.role !== 'hospital') {
-        return (
-            <Alert>
-                <Terminal className="h-4 w-4" />
-                <AlertTitle>Access Denied</AlertTitle>
-                <AlertDescription>You do not have permission to manage departments.</AlertDescription>
-            </Alert>
-        );
     }
 
     return (

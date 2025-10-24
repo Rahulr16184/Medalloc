@@ -61,5 +61,3 @@ export interface Bed {
   patientId?: string | null;
   notes?: string;
 }
-
-    

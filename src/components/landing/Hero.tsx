@@ -28,8 +28,8 @@ export function Hero() {
         </div>
         <div className="mt-6">
           <Button asChild size="lg">
-            <Link href="/signup" prefetch={false}>
-              Get Started
+            <Link href="/hospital" prefetch={false}>
+              Go to Dashboard
             </Link>
           </Button>
         </div>
