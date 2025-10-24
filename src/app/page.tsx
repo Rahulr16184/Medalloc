@@ -14,11 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Loader2, Hospital } from "lucide-react";
 import { app } from "@/lib/firebase/firebase";
 import { UserRole } from "@/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address."),
@@ -32,7 +31,6 @@ const registerSchema = z.object({
 });
 
 export default function AuthPage() {
-  const [isRegister, setIsRegister] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -96,7 +94,8 @@ export default function AuthPage() {
           errorMessage = 'Invalid email or password. Please try again.';
       }
       toast({ variant: "destructive", title: "Login Failed", description: errorMessage });
-      setIsLoading(false);
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -120,7 +119,8 @@ export default function AuthPage() {
         title: "Registration Successful",
         description: "A verification email has been sent to your inbox. Please verify your email to log in.",
       });
-      setIsRegister(false); // Switch back to login view
+      // This will automatically switch the tab to 'login' in the UI
+      // Find a way to trigger tab change if needed, or instruct user.
       loginForm.reset({ email: values.email }); // Pre-fill login email
     } catch (error: any) {
        const errorCode = error.code;
@@ -142,97 +142,93 @@ export default function AuthPage() {
             <p className="text-muted-foreground">Intelligent Bed Management, Simplified.</p>
         </div>
       <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">{isRegister ? "Create a Patient Account" : "Welcome Back"}</CardTitle>
-          <CardDescription>{isRegister ? "Fill in your details to create an account." : "Log in to access your dashboard."}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center space-x-2 mb-6">
-            <Label htmlFor="auth-mode" className={!isRegister ? 'font-bold' : ''}>Login</Label>
-            <Switch
-              id="auth-mode"
-              checked={isRegister}
-              onCheckedChange={setIsRegister}
-              aria-label="Switch between login and register"
-            />
-            <Label htmlFor="auth-mode" className={isRegister ? 'font-bold' : ''}>Register</Label>
-          </div>
-
-          {isRegister ? (
-            <Form {...registerForm}>
-              <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
-                <FormField
-                  control={registerForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={registerForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl><Input type="email" placeholder="name@example.com" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={registerForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Register
-                </Button>
-              </form>
-            </Form>
-          ) : (
-            <Form {...loginForm}>
-              <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
-                <FormField
-                  control={loginForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl><Input type="email" placeholder="name@example.com" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={loginForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Login
-                </Button>
-              </form>
-            </Form>
-          )}
-        </CardContent>
+         <Tabs defaultValue="login" className="w-full">
+            <CardHeader>
+               <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="login">Login</TabsTrigger>
+                    <TabsTrigger value="register">Register</TabsTrigger>
+                </TabsList>
+            </CardHeader>
+            <CardContent>
+                <TabsContent value="login">
+                     <CardDescription className="text-center mb-4">Log in to access your dashboard.</CardDescription>
+                     <Form {...loginForm}>
+                        <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
+                            <FormField
+                            control={loginForm.control}
+                            name="email"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Email Address</FormLabel>
+                                <FormControl><Input type="email" placeholder="name@example.com" {...field} /></FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                            <FormField
+                            control={loginForm.control}
+                            name="password"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Password</FormLabel>
+                                <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                            <Button type="submit" className="w-full" disabled={isLoading}>
+                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Login
+                            </Button>
+                        </form>
+                    </Form>
+                </TabsContent>
+                <TabsContent value="register">
+                    <CardDescription className="text-center mb-4">Fill in your details to create a patient account.</CardDescription>
+                    <Form {...registerForm}>
+                        <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+                            <FormField
+                            control={registerForm.control}
+                            name="name"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Full Name</FormLabel>
+                                <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                            <FormField
+                            control={registerForm.control}
+                            name="email"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Email Address</FormLabel>
+                                <FormControl><Input type="email" placeholder="name@example.com" {...field} /></FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                            <FormField
+                            control={registerForm.control}
+                            name="password"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Password</FormLabel>
+                                <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                            <Button type="submit" className="w-full" disabled={isLoading}>
+                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Register
+                            </Button>
+                        </form>
+                    </Form>
+                </TabsContent>
+            </CardContent>
+         </Tabs>
       </Card>
     </div>
   );
