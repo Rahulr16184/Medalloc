@@ -215,12 +215,12 @@ export default function AuthPage() {
                         <Alert variant="destructive" className="mb-4">
                             <AlertTriangle className="h-4 w-4" />
                             <AlertTitle>Email Not Verified</AlertTitle>
-                            <FormDescription>
+                            <div className="text-sm text-destructive [&_p]:leading-relaxed">
                                 Please verify your email before logging in.
-                                <Button variant="link" className="p-0 h-auto ml-1" onClick={handleResendVerification}>
+                                <Button variant="link" className="p-0 h-auto ml-1 text-destructive" onClick={handleResendVerification}>
                                     Resend verification link.
                                 </Button>
-                            </FormDescription>
+                            </div>
                         </Alert>
                      )}
 
@@ -257,33 +257,33 @@ export default function AuthPage() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Forgot Password</AlertDialogTitle>
                                         </AlertDialogHeader>
-                                        <Form {...forgotPasswordForm}>
-                                            <form onSubmit={forgotPasswordForm.handleSubmit(onForgotPassword)} className="space-y-4">
-                                                <AlertDialogDescription>
-                                                    Enter your email address and we'll send you a link to reset your password.
-                                                </AlertDialogDescription>
-                                                <FormField
-                                                    control={forgotPasswordForm.control}
-                                                    name="email"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Email</FormLabel>
-                                                            <FormControl>
-                                                                <Input type="email" placeholder="name@example.com" {...field} />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <Button type="submit" disabled={isLoading}>
-                                                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                        Send Reset Link
-                                                    </Button>
-                                                </AlertDialogFooter>
-                                            </form>
-                                        </Form>
+                                            <Form {...forgotPasswordForm}>
+                                                <form onSubmit={forgotPasswordForm.handleSubmit(onForgotPassword)} className="space-y-4">
+                                                    <AlertDialogDescription>
+                                                        Enter your email address and we'll send you a link to reset your password.
+                                                    </AlertDialogDescription>
+                                                    <FormField
+                                                        control={forgotPasswordForm.control}
+                                                        name="email"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Email</FormLabel>
+                                                                <FormControl>
+                                                                    <Input type="email" placeholder="name@example.com" {...field} />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <Button type="submit" disabled={isLoading}>
+                                                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                            Send Reset Link
+                                                        </Button>
+                                                    </AlertDialogFooter>
+                                                </form>
+                                            </Form>
                                     </AlertDialogContent>
                                 </AlertDialog>
                             </div>
@@ -344,3 +344,5 @@ export default function AuthPage() {
     </div>
   );
 }
+
+    
