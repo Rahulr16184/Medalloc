@@ -3,13 +3,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Hospital } from 'lucide-react';
+import { LayoutDashboard, Hospital, Users } from 'lucide-react';
 import { ScrollArea, ScrollBar } from "../ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 const navItems = [
     { href: "/server", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
     { href: "/server/hospitals", label: "Manage Hospitals", icon: <Hospital className="h-4 w-4" /> },
+    { href: "/server/users", label: "Manage Users", icon: <Users className="h-4 w-4" /> },
 ];
 
 export function ServerHeader() {
